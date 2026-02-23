@@ -23,6 +23,28 @@ export const getUserData = async (userId: string) => {
   throw new Error(data?.message ?? 'Failed to fetch user data');
 };
 
+export const updateUserInfo = async (
+  userId: string,
+  fields: {
+    first_name: string;
+    last_name: string;
+    phone: string;
+    country: string;
+    state: string;
+    city: string;
+  }
+) => {
+  const response = await axios.post(`${API_URL}/updateUserInfo`, {
+    user_id: userId,
+    company_id: localStorage.getItem("company_id") ?? "",  // ✅ fixes PHP warning
+    company_role: "",                                        // ✅ fixes PHP warning
+    ...fields,
+  });
+  const data = response.data;
+  if (data?.status === 'success') return data;              // ✅ matches actual response
+  throw new Error(data?.message ?? 'Failed to update profile');
+};
+
 export const logout = async () => {
   const token = localStorage.getItem("token");
   try {

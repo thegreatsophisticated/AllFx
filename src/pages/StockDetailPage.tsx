@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, PlusCircle, BarChart3 } from "lucide-react";
-import { getAllStocks, getStockChart, buyStock, sellStock, addWatchList } from "@/lib/api-stocks";
+import { getStockChart, buyStock, sellStock, addWatchList } from "@/lib/api-stocks";
 import StockChart from "@/components/StockChart";
 import BuySellPanel from "@/components/BuySellPanel";
 import { toast } from "sonner";
@@ -23,41 +23,22 @@ const formatCurrency = (value: number) =>
   value.toLocaleString("en-RW", { minimumFractionDigits: 2 });
 
 const StockDetailPage = () => {
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [asset, setAsset] = useState<any>(null);
+  const asset = location.state?.asset ?? null;
+
   const [chartData, setChartData] = useState<{ date: string; price: number }[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isChartLoading, setIsChartLoading] = useState(true);
   const [isTransacting, setIsTransacting] = useState(false);
   const [isWatchlisting, setIsWatchlisting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchStock = async () => {
-      try {
-        const userId = localStorage.getItem("user_id") ?? "";
-        const stocks = await getAllStocks(userId);
-        const found = stocks.find((s: any) => String(s.id) === String(id));
-        if (!found) throw new Error("Stock not found");
-        setAsset(found);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load stock");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchStock();
-  }, [id]);
 
   useEffect(() => {
     const fetchChart = async () => {
-      if (!id) return;
+      if (!asset?.id) return;
       setIsChartLoading(true);
       try {
-        const data = await getStockChart(Number(id));
+        const data = await getStockChart(Number(asset.id));
         const normalized = data.map((point: any) => ({
           date: point.date ?? point.created_at ?? point.timestamp ?? "",
           price: parseFloat(point.price ?? point.close ?? point.value ?? 0),
@@ -71,22 +52,14 @@ const StockDetailPage = () => {
     };
 
     fetchChart();
-  }, [id]);
+  }, [asset?.id]);
 
   const chartStats = useMemo(() => extractChartStats(chartData), [chartData]);
 
-  if (isLoading) {
-    return (
-      <div className="app-shell min-h-screen bg-background flex items-center justify-center">
-        <p className="text-sm text-muted-foreground animate-pulse">Loading stock...</p>
-      </div>
-    );
-  }
-
-  if (error || !asset) {
+  if (!asset) {
     return (
       <div className="app-shell min-h-screen bg-background flex flex-col items-center justify-center gap-3">
-        <p className="text-sm text-destructive">{error ?? "Stock not found"}</p>
+        <p className="text-sm text-destructive">Stock not found</p>
         <button onClick={() => navigate(-1)} className="text-xs text-primary underline">
           Go back
         </button>
@@ -185,16 +158,16 @@ const StockDetailPage = () => {
           />
           <StatRow
             items={[
-              { label: "Price", value: `RWF ${formatCurrency(asset.price)}` },
-              { label: "Mkt Cap", value: asset.quantity.toLocaleString() },
-              { label: "User Share", value: asset.user_share.toString() },
+              { label: "Price", value: `RWF ${formatCurrency(asset.price ?? 0)}` },
+              { label: "Mkt Cap", value: (asset.quantity ?? 0).toLocaleString() },
+              { label: "User Share", value: String(asset.user_shares ?? 0) }, // ✅ user_shares
             ]}
           />
           <StatRow
             items={[
-              { label: "Min Sell", value: `RWF ${formatCurrency(asset.min_sell_price)}` },
-              { label: "Max Buy", value: `RWF ${formatCurrency(asset.max_buy_price)}` },
-              { label: "Interest", value: `${asset.interest_rate}%` },
+              { label: "Min Sell", value: `RWF ${formatCurrency(asset.min_sell_price ?? 0)}` },
+              { label: "Max Buy", value: `RWF ${formatCurrency(asset.max_buy_price ?? 0)}` },
+              { label: "Interest", value: `${asset.interest_rate ?? 0}%` },
             ]}
           />
         </div>
@@ -209,18 +182,18 @@ const StockDetailPage = () => {
       >
         <h3 className="text-base font-display font-bold mb-3">Company Profile</h3>
         <p className="text-sm text-muted-foreground mb-1">{asset.stock_name}</p>
-        <p className="text-sm mb-4">{asset.description}</p>
+        <p className="text-sm mb-4">{asset.description ?? "—"}</p>
 
         <div className="space-y-0">
-          <InfoRow label="Stock Code" value={asset.stock_code} />
-          <InfoRow label="Category" value={asset.category} />
-          <InfoRow label="Payback Date" value={asset.payback_date !== "0000-00-00" ? asset.payback_date : "N/A"} />
-          <InfoRow label="Current Price" value={`RWF ${formatCurrency(asset.current_price)}`} />
-          <InfoRow label="Headquarters" value="Nyarugenge - Kigali - Rwanda" />
+          <InfoRow label="Stock Code" value={asset.stock_code ?? "—"} />
+          <InfoRow label="Category" value={asset.category ?? "—"} />
+          <InfoRow label="Owner" value={asset.owner ?? "—"} />
+          <InfoRow label="Payback Date" value={asset.payback_date && asset.payback_date !== "0000-00-00" ? asset.payback_date : "N/A"} />
+          <InfoRow label="Current Price" value={`RWF ${formatCurrency(asset.current_price ?? asset.price ?? 0)}`} />
+          <InfoRow label="Headquarters" value={asset.location ?? "—"} />
         </div>
       </motion.div>
 
-      {/* Buy/Sell Panel */}
       <BuySellPanel
         asset={asset}
         disabled={isTransacting}

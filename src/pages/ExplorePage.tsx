@@ -158,7 +158,7 @@ const GainerLoserCard = ({ asset, index }: { asset: Asset; index: number }) => {
       </div>
 
       <button
-        onClick={() => navigate(`/stock/${asset.id}`)}
+        onClick={() => navigate(`/stock`, { state: { asset } })}
         className="w-full py-2 rounded-lg bg-accent/10 text-accent text-xs font-semibold border border-accent/20 hover:bg-accent/20 transition-colors"
       >
         Trade

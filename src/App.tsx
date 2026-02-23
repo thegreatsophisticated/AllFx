@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import WelcomePage from "./pages/WelcomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -28,7 +28,7 @@ const App = () => (
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/search" element={<SearchPage />} />
-          <Route path="/stock/:id" element={<StockDetailPage />} />
+          <Route path="/stock" element={<StockDetailPage />} />  {/* ✅ no more :id */}
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<PortfolioPage />} />
             <Route path="explore" element={<ExplorePage />} />

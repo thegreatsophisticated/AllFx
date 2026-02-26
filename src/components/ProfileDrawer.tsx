@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Mail, Phone, User, MapPin, LogOut, ChevronRight, Pencil, X, Check } from "lucide-react";
 import { getUserData, updateUserInfo, logout } from "@/lib/api-auth";
@@ -152,7 +152,10 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
                       RWF {formatCurrency(parseFloat(user.account_balance ?? 0))}
                     </p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                 {/* navigate to mobile money */}
+                 <Link to="/mobile-money" className="text-xs text-primary underline">
+                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                 </Link>
                 </div>
               </div>
             )}

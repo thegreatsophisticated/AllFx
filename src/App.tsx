@@ -13,6 +13,7 @@ import ExplorePage from "./pages/ExplorePage";
 import SearchPage from "./pages/SearchPage";
 import NotFound from "./pages/NotFound";
 import StockDetailPage from "./pages/StockDetailPage";
+import MobileMoney from "./pages/MobileMoney";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +29,8 @@ const App = () => (
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/search" element={<SearchPage />} />
-          <Route path="/stock" element={<StockDetailPage />} />  {/* ✅ no more :id */}
+          <Route path="/stock" element={<StockDetailPage />} />
+          <Route path="/mobile-money" element={<MobileMoney />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<PortfolioPage />} />
             <Route path="explore" element={<ExplorePage />} />

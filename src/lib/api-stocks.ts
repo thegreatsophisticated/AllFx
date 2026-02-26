@@ -47,3 +47,11 @@ export const sellStock = async (userId: string, stockId: number, quantity: numbe
   if (data?.message?.toLowerCase().includes('success') || data?.transaction_id || data?.status === 'success') return data;
   throw new Error(data?.message ?? 'Sell failed');
 };
+
+export const getStockProducts = async (category: string = "19") => {
+  const response = await axios.post(`${API_URL}/getStockProducts`, { category });
+  const data = response.data;
+  if (Array.isArray(data)) return data.map((stock) => ({ ...stock, finalchange: stock.finalchange ?? 0 }));
+  if (Array.isArray(data?.stocks)) return data.stocks.map((stock) => ({ ...stock, finalchange: stock.finalchange ?? 0 }));
+  throw new Error(data?.message ?? "Failed to fetch stock products");
+};

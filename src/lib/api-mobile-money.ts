@@ -46,20 +46,27 @@ export const getUsers = async (): Promise<MobileMoneyUser[]> => {
 // (mirrors Flutter currentFilteredAssets init with RWF at index 0)
 
 export const getCurrencies = async (): Promise<Currency[]> => {
-  const response = await axios.post(`${API_URL}/getStockProducts`, {
-    category: "currencies",
-  });
+  // Flutter logic:
+  // currentFilteredAssets = [
+  //   {"id": "0", "stock_name": "RWANDAN FRANCS", "category": "currencies"},
+  //   ...widget.allAssets.where((asset) => asset["category"] == "currencies"),
+  // ];
+  // → fetch all assets, filter by category == "currencies" client-side, prepend RWF
+  const response = await axios.post(`${API_URL}/getStockProducts`, {});
   const data = response.data;
-  const list: Currency[] = Array.isArray(data)
+  const allAssets: Currency[] = Array.isArray(data)
     ? data
     : Array.isArray(data?.stocks)
     ? data.stocks
     : [];
 
-  // Flutter prepends: {"id": "0", "stock_name": "RWANDAN FRANCS", "category": "currencies"}
+  const currencyAssets = allAssets.filter(
+    (asset) => asset.category?.toLowerCase() === "currencies"
+  );
+
   return [
     { id: "0", stock_name: "RWANDAN FRANCS", category: "currencies" },
-    ...list,
+    ...currencyAssets,
   ];
 };
 

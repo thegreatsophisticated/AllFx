@@ -14,6 +14,7 @@ import SearchPage from "./pages/SearchPage";
 import NotFound from "./pages/NotFound";
 import StockDetailPage from "./pages/StockDetailPage";
 import MobileMoney from "./pages/MobileMoney";
+import UserTopUp from "./pages/UserTopUp";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/search" element={<SearchPage />} />
           <Route path="/stock" element={<StockDetailPage />} />
           <Route path="/mobile-money" element={<MobileMoney />} />
+          <Route path="/user-top-up" element={<UserTopUp />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<PortfolioPage />} />
             <Route path="explore" element={<ExplorePage />} />

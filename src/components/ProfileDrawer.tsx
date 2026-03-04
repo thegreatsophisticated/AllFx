@@ -1,7 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Phone, User, MapPin, LogOut, ChevronRight, Pencil, X, Check } from "lucide-react";
+import {
+  Mail,
+  Phone,
+  User,
+  MapPin,
+  LogOut,
+  ChevronRight,
+  Pencil,
+  X,
+  Check,
+  PlusCircle,
+  Wallet,
+  ArrowUpRight,
+  TrendingUp,
+} from "lucide-react";
 import { getUserData, updateUserInfo, logout } from "@/lib/api-auth";
 import { toast } from "sonner";
 
@@ -19,7 +33,6 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Edit state
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState({
@@ -40,7 +53,6 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
         const userId = localStorage.getItem("user_id") ?? "";
         const data = await getUserData(userId);
         setUser(data);
-        // Pre-fill form with current values
         setForm({
           first_name: data.first_name ?? "",
           last_name: data.last_name ?? "",
@@ -55,7 +67,6 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
         setIsLoading(false);
       }
     };
-
     fetchUser();
   }, [open]);
 
@@ -87,8 +98,10 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
     : "?";
 
   const location = user
-    ? [user.country, user.state, user.city].filter(Boolean).join(" - ") || "—"
+    ? [user.country, user.state, user.city].filter(Boolean).join(" · ") || "—"
     : "—";
+
+  const balance = parseFloat(user?.account_balance ?? 0);
 
   return (
     <>
@@ -122,13 +135,12 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
           </div>
         ) : (
           <>
-            {/* Header */}
+            {/* ── Header ── */}
             <div className="p-6 border-b border-border">
-              <div className="flex items-start justify-between">
-                <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xl font-bold mb-3">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center text-primary text-xl font-bold">
                   {initials}
                 </div>
-                {/* Edit / Cancel toggle */}
                 <button
                   onClick={() => setIsEditing(!isEditing)}
                   className="p-2 rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -136,70 +148,76 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
                   {isEditing ? <X className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
                 </button>
               </div>
-              <h2 className="text-lg font-display font-bold">
+              <h2 className="text-lg font-display font-bold leading-tight">
                 {user?.first_name} {user?.last_name}
               </h2>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
 
-            {/* Balance */}
+            {/* ── Balance Card ── */}
             {user?.account_balance !== undefined && (
-              <div className="px-6 py-4 border-b border-border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Balance</p>
-                    <p className="text-lg font-semibold">
-                      RWF {formatCurrency(parseFloat(user.account_balance ?? 0))}
-                    </p>
+              <div className="px-4 py-4 border-b border-border">
+                <div className="rounded-2xl bg-primary/10 border border-primary/20 p-4 flex flex-col gap-3">
+                  {/* Balance row */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center">
+                        <Wallet className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground leading-none mb-1">Account Balance</p>
+                        <p className="text-lg font-bold text-foreground leading-none">
+                          RWF {formatCurrency(balance)}
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/mobile-money"
+                      className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <TrendingUp className="w-3.5 h-3.5" />
+                    </Link>
                   </div>
-                 {/* navigate to mobile money */}
-                 <Link to="/mobile-money" className="text-xs text-primary underline">
-                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                 </Link>
+
+                  {/* Top Up button */}
+                  <Link
+                    to="/user-top-up"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold tracking-wide hover:opacity-90 transition-opacity"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    Top Up Account
+                  </Link>
+
+                  {/* Withdraw / Transfer row */}
+                  <Link
+                    to="/mobile-money"
+                    className="flex items-center justify-between w-full px-3 py-2 rounded-xl bg-secondary border border-border text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                      Withdraw / Transfer
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
               </div>
             )}
 
-            {/* Info / Edit form */}
+            {/* ── Info / Edit form ── */}
             <div className="flex-1 overflow-y-auto">
               <div className="px-6 py-4">
-                <p className="text-xs text-muted-foreground font-semibold uppercase mb-3">
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-3">
                   {isEditing ? "Edit Profile" : "User Information"}
                 </p>
 
                 {isEditing ? (
                   <div className="space-y-3">
-                    <EditField
-                      label="First Name"
-                      value={form.first_name}
-                      onChange={(v) => setForm({ ...form, first_name: v })}
-                    />
-                    <EditField
-                      label="Last Name"
-                      value={form.last_name}
-                      onChange={(v) => setForm({ ...form, last_name: v })}
-                    />
-                    <EditField
-                      label="Phone"
-                      value={form.phone}
-                      onChange={(v) => setForm({ ...form, phone: v })}
-                    />
-                    <EditField
-                      label="Country"
-                      value={form.country}
-                      onChange={(v) => setForm({ ...form, country: v })}
-                    />
-                    <EditField
-                      label="State"
-                      value={form.state}
-                      onChange={(v) => setForm({ ...form, state: v })}
-                    />
-                    <EditField
-                      label="City"
-                      value={form.city}
-                      onChange={(v) => setForm({ ...form, city: v })}
-                    />
-
+                    <EditField label="First Name" value={form.first_name} onChange={(v) => setForm({ ...form, first_name: v })} />
+                    <EditField label="Last Name"  value={form.last_name}  onChange={(v) => setForm({ ...form, last_name: v })} />
+                    <EditField label="Phone"      value={form.phone}      onChange={(v) => setForm({ ...form, phone: v })} />
+                    <EditField label="Country"    value={form.country}    onChange={(v) => setForm({ ...form, country: v })} />
+                    <EditField label="State"      value={form.state}      onChange={(v) => setForm({ ...form, state: v })} />
+                    <EditField label="City"       value={form.city}       onChange={(v) => setForm({ ...form, city: v })} />
                     <button
                       onClick={handleSave}
                       disabled={isSaving}
@@ -211,13 +229,9 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <ProfileItem icon={Mail} label="Email" value={user?.email ?? "—"} />
-                    <ProfileItem icon={Phone} label="Phone" value={user?.phone ?? "—"} />
-                    <ProfileItem
-                      icon={User}
-                      label="Name"
-                      value={`${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "—"}
-                    />
+                    <ProfileItem icon={Mail}   label="Email"    value={user?.email ?? "—"} />
+                    <ProfileItem icon={Phone}  label="Phone"    value={user?.phone ?? "—"} />
+                    <ProfileItem icon={User}   label="Name"     value={`${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "—"} />
                     <ProfileItem icon={MapPin} label="Location" value={location} />
                   </div>
                 )}
@@ -226,7 +240,7 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
           </>
         )}
 
-        {/* Logout — always visible */}
+        {/* ── Logout ── */}
         <div className="p-4 border-t border-border">
           <button
             onClick={handleLogout}
@@ -241,12 +255,22 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
   );
 };
 
-const ProfileItem = ({ icon: Icon, label, value }: { icon: any; label: string; value: string }) => (
+const ProfileItem = ({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+}) => (
   <div className="flex items-start gap-3">
-    <Icon className="w-4 h-4 text-muted-foreground mt-0.5" />
+    <div className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0 mt-0.5">
+      <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+    </div>
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm">{value}</p>
+      <p className="text-sm font-medium">{value}</p>
     </div>
   </div>
 );

@@ -13,7 +13,7 @@ export const getAllStocks = async (userId: string) => {
 export const getUserStockProducts = async (userId: string) => {
   const response = await axios.post(`${API_URL}/getUserStockProducts`, { userID: userId });
   const data = response.data;
-  console.log('Portfolio data:', data); // remove once shape is confirmed
+  console.log('Portfolio data:', data); 
   if (Array.isArray(data)) return data.map((stock) => ({ ...stock, finalchange: stock.finalchange ?? 0 }));
   if (Array.isArray(data?.stocks)) return data.stocks.map((stock) => ({ ...stock, finalchange: stock.finalchange ?? 0 }));
   throw new Error(data?.message ?? 'Failed to fetch portfolio');
@@ -21,7 +21,9 @@ export const getUserStockProducts = async (userId: string) => {
 
 export const getStockChart = async (stockId: number) => {
   const response = await axios.post(`${API_URL}/getStockChart`, { stock_id: stockId });
-  const data = response.data;
+ 
+  const data = response.data?.data;
+   console.log('Chart data:',data.data);
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.chart)) return data.chart;
   throw new Error(data?.message ?? 'Failed to fetch chart data');

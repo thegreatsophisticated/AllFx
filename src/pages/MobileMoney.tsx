@@ -10,6 +10,9 @@ import {
   ChevronDown,
   Loader2,
   Wallet,
+  ImageIcon,
+  X,
+  ZoomIn,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -21,8 +24,9 @@ import {
   transactionApprove,
 } from "@/lib/api-mobile-money";
 
-// ─── Local wrappers — keep internal call sites unchanged, swallow errors ──────
-// (mirrors Flutter's try/catch print pattern — returns [] / null on failure)
+const PROOF_BASE_URL = "https://irebegrp.com/irebe/images/";
+
+// ─── Local wrappers ───────────────────────────────────────────────────────────
 
 const fetchUsers = async () => {
   try { return await getUsers(); } catch { return []; }
@@ -41,9 +45,124 @@ const fetchUserById = async (id: string) => {
 };
 
 type Direction = "in" | "out";
-type Provider = "mtn" | "airtel" | "bk";
+type Provider  = "mtn" | "airtel" | "bk";
 
-// ─── Provider Toggle Group — mirrors Flutter ImageToggleGroup ─────────────────
+// ─── Proof Image Lightbox ─────────────────────────────────────────────────────
+
+function ProofLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  const [imgError, setImgError] = useState(false);
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.88, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.88, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          className="relative max-w-sm w-full"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={onClose}
+            className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center shadow-lg text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <div className="rounded-2xl overflow-hidden border border-border shadow-2xl bg-card">
+            {/* Header with open-in-new-tab fallback */}
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-primary" />
+                <p className="text-xs font-semibold text-muted-foreground">Payment Proof</p>
+              </div>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-semibold text-primary underline underline-offset-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Open ↗
+              </a>
+            </div>
+
+            {imgError ? (
+              <div className="flex flex-col items-center gap-3 py-10 px-4 text-center">
+                <ImageIcon className="w-8 h-8 text-muted-foreground/40" />
+                <p className="text-xs text-muted-foreground">Image could not be displayed.</p>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Open in browser ↗
+                </a>
+              </div>
+            ) : (
+              <img
+                src={url}
+                alt="Payment proof"
+                className="w-full max-h-[70vh] object-contain bg-secondary"
+                onError={() => setImgError(true)}
+              />
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+// ─── Proof Thumbnail ──────────────────────────────────────────────────────────
+
+function ProofThumbnail({ proof }: { proof: string }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [imgLoaded, setImgLoaded]       = useState(false);
+  const [imgError, setImgError]         = useState(false);
+  // Try https first; if server only serves http the lightbox has a direct-link fallback
+  const url = `${PROOF_BASE_URL}${proof}`;
+
+  return (
+    <>
+      {lightboxOpen && <ProofLightbox url={url} onClose={() => setLightboxOpen(false)} />}
+
+      <button
+        onClick={() => setLightboxOpen(true)}
+        className="group relative flex-shrink-0 flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors overflow-hidden"
+        title={`View proof: ${proof}`}
+      >
+        {/* Thumbnail preview — small square */}
+        <div className="w-6 h-6 rounded-md overflow-hidden bg-secondary flex items-center justify-center flex-shrink-0">
+          <img
+            src={url}
+            alt="proof"
+            className={`w-full h-full object-cover transition-opacity ${imgLoaded && !imgError ? "opacity-100" : "opacity-0 absolute"}`}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgError(true)}
+          />
+          {(!imgLoaded || imgError) && (
+            <ImageIcon className={`w-3.5 h-3.5 ${imgError ? "text-destructive/50" : "text-primary/50"}`} />
+          )}
+        </div>
+        <span className="text-[11px] font-semibold text-primary flex items-center gap-1">
+          Proof
+          <ZoomIn className="w-3 h-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+        </span>
+      </button>
+    </>
+  );
+}
+
+// ─── Provider Toggle Group ────────────────────────────────────────────────────
 
 const PROVIDERS: { id: Provider; label: string; color: string; bg: string; abbr: string; logoUrl: string }[] = [
   {
@@ -52,7 +171,6 @@ const PROVIDERS: { id: Provider; label: string; color: string; bg: string; abbr:
     abbr: "MT",
     color: "text-yellow-600",
     bg: "bg-yellow-400",
-    // MTN Rwanda yellow — fallback to styled abbr if logo fails
     logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/MTN_Logo.svg/120px-MTN_Logo.svg.png",
   },
   {
@@ -90,20 +208,17 @@ function ProviderToggleGroup({
             whileTap={{ scale: 0.96 }}
             onClick={() => onChange(p.id)}
             className={`flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border-2 transition-all ${
-              isSelected
-                ? "border-primary bg-primary/5"
-                : "border-border bg-card"
+              isSelected ? "border-primary bg-primary/5" : "border-border bg-card"
             }`}
           >
-            {/* Logo circle — same ClipOval pattern from Flutter */}
             <div className={`w-9 h-9 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 ${p.bg}`}>
               <img
                 src={p.logoUrl}
                 alt={p.label}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                  (e.target as HTMLImageElement).parentElement!.innerHTML =
+                  e.currentTarget.style.display = "none";
+                  e.currentTarget.parentElement!.innerHTML =
                     `<span class="text-xs font-bold text-white">${p.abbr}</span>`;
                 }}
               />
@@ -122,35 +237,38 @@ function ProviderToggleGroup({
 
 export default function MobileMoney() {
   const navigate = useNavigate();
-  const userId = localStorage.getItem("user_id") ?? "";
+  const userId   = localStorage.getItem("user_id") ?? "";
 
-  const [direction, setDirection] = useState<Direction>("in");
-  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [direction, setDirection]       = useState<Direction>("in");
+  const [currencies, setCurrencies]     = useState<any[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<string>("");
-  const [account, setAccount] = useState("");
-  const [amount, setAmount] = useState("");
+  const [account, setAccount]           = useState("");
+  const [amount, setAmount]             = useState("");
 
   const [emailToIdMap, setEmailToIdMap] = useState<Record<string, number>>({});
   const [isEmailValid, setIsEmailValid] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [showConfirm, setShowConfirm]   = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [txLoading, setTxLoading] = useState(true);
+  const [txLoading, setTxLoading]       = useState(true);
   const [currenciesLoading, setCurrenciesLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey]     = useState(0);
 
   const reloadTransactions = () => {
     setTxLoading(true);
-    fetchTransactions(userId).then((txs) => { setTransactions(txs); setTxLoading(false); });
+    fetchTransactions(userId).then((txs) => {
+      setTransactions(txs);
+      setTxLoading(false);
+    });
   };
 
   useEffect(() => {
     fetchCurrencies().then((c) => { setCurrencies(c); setCurrenciesLoading(false); });
     fetchUsers().then((users) => {
       const map: Record<string, number> = {};
-      users.forEach((u) => { map[u.email.toLowerCase()] = u.id; });
+      users.forEach((u: any) => { map[u.email.toLowerCase()] = u.id; });
       setEmailToIdMap(map);
     });
     reloadTransactions();
@@ -168,9 +286,9 @@ export default function MobileMoney() {
   }, [account, emailToIdMap]);
 
   const validate = () => {
-    if (!selectedProvider) { toast.error("Please select a payment provider"); return false; }
-    if (!selectedAsset) { toast.error("Please select a currency"); return false; }
-    if (!isEmailValid) { toast.error("Invalid email / account"); return false; }
+    if (!selectedProvider)  { toast.error("Please select a payment provider"); return false; }
+    if (!selectedAsset)     { toast.error("Please select a currency"); return false; }
+    if (!isEmailValid)      { toast.error("Invalid email / account"); return false; }
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       toast.error("Enter a valid amount"); return false;
     }
@@ -197,7 +315,6 @@ export default function MobileMoney() {
   }
 
   return (
-    // ✅ Exact same pattern as SearchPage — just app-shell, no flex-col min-h-screen
     <div className="app-shell bg-background flex flex-col">
 
       {/* Header */}
@@ -214,7 +331,6 @@ export default function MobileMoney() {
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5">
 
-        {/* Provider selector — mirrors Flutter ImageToggleGroup, placed above direction toggle */}
         <ProviderToggleGroup selected={selectedProvider} onChange={setSelectedProvider} />
 
         {/* Direction toggle */}
@@ -335,7 +451,7 @@ export default function MobileMoney() {
         {/* Transactions list */}
         <div>
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            Recent Transactions
+            AllFx
           </h2>
 
           {txLoading ? (
@@ -346,7 +462,6 @@ export default function MobileMoney() {
             </div>
           ) : transactions.length === 0 ? (
             <div className="text-center mt-10">
-              {/* <SendHorizonal className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" /> */}
               <p className="text-sm text-muted-foreground">No transactions yet</p>
             </div>
           ) : (
@@ -365,7 +480,7 @@ export default function MobileMoney() {
         </div>
       </div>
 
-      {/* ── Confirm button — sticky bottom, stays inside app-shell width ── */}
+      {/* Confirm button */}
       <div className="sticky bottom-0 px-4 py-3 bg-gradient-to-t from-background via-background to-background/0">
         <motion.button
           whileTap={{ scale: 0.98 }}
@@ -384,7 +499,7 @@ export default function MobileMoney() {
   );
 }
 
-// ─── Password Dialog — mirrors Flutter _askPassword AlertDialog ───────────────
+// ─── Password Dialog ──────────────────────────────────────────────────────────
 
 function PasswordDialog({
   open,
@@ -397,10 +512,9 @@ function PasswordDialog({
   onCancel: () => void;
   isLoading: boolean;
 }) {
-  const [pw, setPw] = useState("");
+  const [pw, setPw]     = useState("");
   const [show, setShow] = useState(false);
 
-  // Reset on open
   useEffect(() => {
     if (open) { setPw(""); setShow(false); }
   }, [open]);
@@ -408,7 +522,6 @@ function PasswordDialog({
   if (!open) return null;
 
   return (
-    // Backdrop
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm px-6">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -435,11 +548,14 @@ function PasswordDialog({
             >
               {show ? (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
                 </svg>
               ) : (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
                 </svg>
               )}
             </button>
@@ -467,7 +583,7 @@ function PasswordDialog({
   );
 }
 
-// ─── Transaction Row — mirrors Flutter TransactionItem exactly ────────────────
+// ─── Transaction Row ──────────────────────────────────────────────────────────
 
 function TransactionRow({
   tx,
@@ -480,14 +596,11 @@ function TransactionRow({
   currentUserId: string;
   onRefresh: () => void;
 }) {
-  const [refName, setRefName] = useState<string | null>(null);
-
-  // Dialog state
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [refName, setRefName]           = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen]     = useState(false);
   const [pendingAction, setPendingAction] = useState<"approve" | "cancel" | null>(null);
   const [dialogLoading, setDialogLoading] = useState(false);
 
-  // Resolve reference name — mirrors Flutter FutureBuilder(userInfo(...))
   useEffect(() => {
     const idToFetch =
       String(tx.reference_code) === String(currentUserId)
@@ -503,34 +616,26 @@ function TransactionRow({
     });
   }, [tx]);
 
-  // ── Flutter isOut logic (verbatim) ──────────────────────────────────────────
-  // direction=="out" && userId==currentUserId  → isOut=true
-  // direction=="out" && userId!=currentUserId  → isOut=false
-  // direction=="in"  && userId==currentUserId  → isOut=false
-  // direction=="in"  && userId!=currentUserId  → isOut=true
   let isOut = false;
-  const txUserId   = String(tx.user_id);
+  const txUserId    = String(tx.user_id);
   const txDirection = String(tx.direction);
-  if (txDirection === "out" && txUserId === String(currentUserId)) isOut = true;
+  if      (txDirection === "out" && txUserId === String(currentUserId)) isOut = true;
   else if (txDirection === "out" && txUserId !== String(currentUserId)) isOut = false;
   else if (txDirection === "in"  && txUserId === String(currentUserId)) isOut = false;
   else if (txDirection === "in"  && txUserId !== String(currentUserId)) isOut = true;
 
-  // Flutter: amountColor — grey when status=="" (pending), else red/green
   const amountColorClass =
     tx.status === "" ? "text-muted-foreground"
-    : isOut           ? "text-destructive"
+    : isOut          ? "text-destructive"
     : "text-accent";
 
-  // Flutter NumberFormat('#,##0.00')
-  const parsedAmount = parseFloat(String(tx.amount).replace(/,/g, "")) || 0;
+  const parsedAmount   = parseFloat(String(tx.amount).replace(/,/g, "")) || 0;
   const formattedAmount = parsedAmount.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  const displayAmount = `${isOut ? "-" : "+"}${formattedAmount} ${tx.stock_code}`;
+  const displayAmount = `${isOut ? "-" : "+"}${formattedAmount} RWF`;
 
-  // ── Flutter _handleAction ───────────────────────────────────────────────────
   const openDialog = (action: "approve" | "cancel") => {
     setPendingAction(action);
     setDialogOpen(true);
@@ -546,7 +651,6 @@ function TransactionRow({
         transaction_id: String(tx.transaction_id),
         status: pendingAction,
       });
-
       if (data?.status === "success") {
         toast.success(data?.message ?? "Success");
         setDialogOpen(false);
@@ -561,13 +665,9 @@ function TransactionRow({
     }
   };
 
-  // ── Flutter status/role action logic ───────────────────────────────────────
-  // status==""  && currentUserId != userId  → Approve + Cancel buttons
-  // status==""  && currentUserId == userId  → Pending (disabled) + Cancel
-  // status=="approve"                       → Verified icon + approveDate
-  // status=="cancel"                        → Block icon + approveDate
-  const isOwner = String(tx.user_id) === String(currentUserId);
-  const status  = tx.status ?? "";
+  const isOwner   = String(tx.user_id) === String(currentUserId);
+  const status    = tx.status ?? "";
+  const hasProof  = tx.proof && tx.proof.trim() !== "";
 
   const approveDate = tx.approve_date && tx.approve_date !== "0000-00-00 00:00:00"
     ? tx.approve_date?.slice(0, 10)
@@ -588,10 +688,10 @@ function TransactionRow({
         transition={{ delay: index * 0.04 }}
         className="p-3.5 rounded-xl bg-card border border-border"
       >
-        {/* Top row: left info + amount */}
+        {/* Top row: icon + name/date + amount */}
         <div className="flex items-start justify-between gap-3">
-          {/* Left */}
-          <div className="flex items-center gap-3 min-w-0">
+          {/* Left: direction icon + info */}
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
               isOut ? "bg-destructive/10" : "bg-accent/10"
             }`}>
@@ -600,23 +700,35 @@ function TransactionRow({
                 : <ArrowDownLeft className="w-4 h-4 text-accent" />}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold truncate">{refName ?? "..."}</p>
+              <p className="text-xs font-bold truncate">{refName ?? "..."}</p>
               <p className="text-xs text-muted-foreground">
-                Date: {tx.start_date?.slice(0, 10)}
+                {tx.start_date?.slice(0, 10)}
               </p>
+              {/* Stock code badge */}
+              {tx.stock_code && (
+                <span className="inline-block mt-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-primary/10 text-primary">
+                  {tx.stock_code}
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Amount — Flutter Text(displayAmount) with amountColor */}
-          <p className={`text-sm font-semibold flex-shrink-0 ${amountColorClass}`}>
+          {/* Amount top-right */}
+          <p className={`text-xs font-semibold flex-shrink-0 pt-0.5 ${amountColorClass}`}>
             {displayAmount}
           </p>
         </div>
 
-        {/* Action buttons row — mirrors Flutter conditional actions exactly */}
-        <div className="mt-2.5 flex items-center justify-end gap-2">
+        {/* Action buttons row — proof thumbnail lives here inline with actions */}
+        <div className="mt-2.5 flex items-center justify-between gap-2">
+          {/* Proof thumbnail on the left of the action row */}
+          {hasProof ? (
+            <ProofThumbnail proof={tx.proof} />
+          ) : (
+            <div />
+          )}
+          <div className="flex items-center gap-2">
 
-          {/* status=="" && currentUserId != userId → Approve + Cancel */}
           {status === "" && !isOwner && (
             <>
               <button
@@ -634,11 +746,9 @@ function TransactionRow({
             </>
           )}
 
-          {/* status=="" && currentUserId == userId → Pending (disabled) + Cancel */}
           {status === "" && isOwner && (
             <>
               <span className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-muted-foreground text-xs font-medium">
-                {/* hourglass_empty */}
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 2h14"/><path d="M5 22h14"/><path d="M17 2v4l-5 5-5-5V2"/><path d="M7 22v-4l5-5 5 5v4"/>
                 </svg>
@@ -653,10 +763,8 @@ function TransactionRow({
             </>
           )}
 
-          {/* status=="approve" → Verified icon + approveDate */}
           {status === "approve" && (
             <span className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/5 text-accent text-xs font-medium">
-              {/* verified checkmark */}
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
               </svg>
@@ -664,23 +772,22 @@ function TransactionRow({
             </span>
           )}
 
-          {/* status=="cancel" → Block icon + approveDate */}
           {status === "cancel" && (
             <span className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive text-xs font-medium">
-              {/* block icon */}
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
               </svg>
               Cancelled{approveDate ? ` · ${approveDate}` : ""}
             </span>
           )}
-        </div>
+          </div>{/* end inner flex */}
+        </div>{/* end action row */}
       </motion.div>
     </>
   );
 }
 
-// ─── Confirm Screen — mirrors Flutter MobileMoneyConfirm exactly ─────────────
+// ─── Confirm Screen ───────────────────────────────────────────────────────────
 
 function ConfirmScreen({
   userId,
@@ -703,40 +810,30 @@ function ConfirmScreen({
   onBack: () => void;
   onDone: () => void;
 }) {
-  // ── State ──────────────────────────────────────────────────────────────────
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // Flutter _isObscured
+  const [password, setPassword]         = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Flutter: loadUserInfo() → sender, loadUserInfo2() → receiver
-  const [senderInfo, setSenderInfo] = useState<any>(null);
+  const [isLoading, setIsLoading]       = useState(false);
+  const [senderInfo, setSenderInfo]     = useState<any>(null);
   const [receiverInfo, setReceiverInfo] = useState<any>(null);
 
   useEffect(() => {
-    // Load sender (current user)
     fetchUserById(userId).then((u) => setSenderInfo(u));
-    // Load receiver
     fetchUserById(String(receiverId)).then((u) => setReceiverInfo(u));
   }, [userId, receiverId]);
 
-  const senderName = senderInfo
+  const senderName   = senderInfo
     ? `${senderInfo.first_name ?? ""} ${senderInfo.last_name ?? ""}`.trim() || "N/A"
     : "Loading...";
-
   const receiverName = receiverInfo
     ? `${receiverInfo.first_name ?? ""} ${receiverInfo.last_name ?? ""}`.trim() || "N/A"
     : "Loading...";
 
-  // Flutter direction logic:
-  // direction=="out" → From=sender, To=receiver
-  // direction=="in"  → From=receiver, To=sender
   const fromName = direction === "out" ? senderName : receiverName;
   const toName   = direction === "in"  ? senderName : receiverName;
 
   const providerInfo = PROVIDERS.find((p) => p.id === provider);
 
-  // Flutter _buildRow rows — exact order from Flutter source
   const summaryRows = [
     { label: "Provider",    value: providerInfo?.label ?? provider.toUpperCase() },
     { label: "From A/C",    value: fromName },
@@ -747,15 +844,10 @@ function ConfirmScreen({
     { label: "Fee",         value: "RWF 0.0" },
   ];
 
-  // ── Submit — mirrors Flutter cashout() using accountTransact endpoint ──────
   const handleSubmit = async () => {
-    if (!password.trim()) {
-      setPasswordError("Password is required");
-      return;
-    }
+    if (!password.trim()) { setPasswordError("Password is required"); return; }
     setPasswordError("");
     setIsLoading(true);
-
     try {
       const data = await accountTransact({
         user_id: userId,
@@ -765,7 +857,6 @@ function ConfirmScreen({
         amount,
         password,
       });
-
       if (data?.message === "success" || data?.status === "success") {
         toast.success("Transfer successful!");
         setTimeout(() => onDone(), 800);
@@ -782,7 +873,6 @@ function ConfirmScreen({
   return (
     <div className="app-shell bg-background flex flex-col">
 
-      {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-6 pb-2 flex-shrink-0">
         <button
           onClick={onBack}
@@ -793,10 +883,8 @@ function ConfirmScreen({
         <h2 className="text-lg font-display font-bold">Confirm Transfer</h2>
       </div>
 
-      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4">
 
-        {/* ── TRANSFER DETAILS card — mirrors Flutter Card + _buildRow ── */}
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-0.5">
             Transfer Details
@@ -815,7 +903,6 @@ function ConfirmScreen({
               >
                 <p className="text-sm text-muted-foreground">{label}</p>
                 <p className={`text-sm font-semibold max-w-[55%] text-right truncate ${
-                  // Highlight loading states subtly
                   value === "Loading..." ? "text-muted-foreground animate-pulse" : "text-foreground"
                 }`}>
                   {value}
@@ -825,7 +912,6 @@ function ConfirmScreen({
           </motion.div>
         </div>
 
-        {/* ── Password section — mirrors Flutter Titleheader + TextFormField ── */}
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-0.5">
             Enter your account password
@@ -850,21 +936,18 @@ function ConfirmScreen({
                     passwordError ? "border-destructive" : "border-border focus:border-primary"
                   }`}
                 />
-                {/* Eye toggle — mirrors Flutter visibility_off / visibility IconButton */}
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? (
-                    // eye-off
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
                       <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
                       <line x1="1" y1="1" x2="23" y2="23"/>
                     </svg>
                   ) : (
-                    // eye
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                       <circle cx="12" cy="12" r="3"/>
@@ -872,7 +955,6 @@ function ConfirmScreen({
                   )}
                 </button>
               </div>
-              {/* Inline validation error — mirrors Flutter validator return */}
               <AnimatePresence>
                 {passwordError && (
                   <motion.p
@@ -890,7 +972,6 @@ function ConfirmScreen({
         </div>
       </div>
 
-      {/* ── Bottom buttons — sticky, respects app-shell width ── */}
       <div className="sticky bottom-0 px-4 py-3 bg-gradient-to-t from-background via-background to-background/0 space-y-2">
         <motion.button
           whileTap={{ scale: 0.98 }}

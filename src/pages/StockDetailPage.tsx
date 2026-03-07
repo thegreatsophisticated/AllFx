@@ -39,6 +39,9 @@ const StockDetailPage = () => {
       setIsChartLoading(true);
       try {
         const data = await getStockChart(Number(asset.id));
+
+        console.log('chart data:', data);
+        
         const normalized = data.map((point: any) => ({
           date: point.date ?? point.created_at ?? point.timestamp ?? "",
           price: parseFloat(point.price ?? point.close ?? point.value ?? 0),

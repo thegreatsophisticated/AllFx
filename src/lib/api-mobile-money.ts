@@ -47,10 +47,7 @@ export const getUsers = async (): Promise<MobileMoneyUser[]> => {
 
 export const getCurrencies = async (): Promise<Currency[]> => {
   // Flutter logic:
-  // currentFilteredAssets = [
-  //   {"id": "0", "stock_name": "RWANDAN FRANCS", "category": "currencies"},
-  //   ...widget.allAssets.where((asset) => asset["category"] == "currencies"),
-  // ];
+
   // → fetch all assets, filter by category == "currencies" client-side, prepend RWF
   const response = await axios.post(`${API_URL}/getStockProducts`, {});
   const data = response.data;
@@ -60,15 +57,19 @@ export const getCurrencies = async (): Promise<Currency[]> => {
     ? data.stocks
     : [];
 
+
   const currencyAssets = allAssets.filter(
     (asset) => asset.category?.toLowerCase() === "currencies"
   );
+
 
   return [
     { id: "0", stock_name: "RWANDAN FRANCS", category: "currencies" },
     ...currencyAssets,
   ];
+
 };
+
 
 // ─── getAccountRequests ───────────────────────────────────────────────────────
 // Fetches transactions for the current user
@@ -87,8 +88,7 @@ export const getAccountRequests = async (
 
 // ─── getUserData ──────────────────────────────────────────────────────────────
 // Fetches a single user's profile by ID
-// Used in: resolving reference names in transaction list, loading sender/receiver
-// in ConfirmScreen (mirrors Flutter userInfo() / loadUserInfo() / loadUserInfo2())
+
 
 export const getUserData = async (userId: string): Promise<any> => {
   const response = await axios.post(`${API_URL}/getUserData`, {
@@ -101,7 +101,7 @@ export const getUserData = async (userId: string): Promise<any> => {
 
 // ─── accountTransact ──────────────────────────────────────────────────────────
 // Submits the transfer after password confirmation on the ConfirmScreen
-// (mirrors Flutter cashout() calling /accountTransact)
+
 
 export const accountTransact = async (payload: {
   user_id: string;
@@ -110,6 +110,11 @@ export const accountTransact = async (payload: {
   direction: "in" | "out";
   amount: string;
   password: string;
+  // proof of payment (optional)
+  // proof_image_url?: string;
+  // direction: "in";
+    // reference_code: 1;
+
 }): Promise<{ message?: string; status?: string }> => {
   const response = await axios.post(`${API_URL}/accountTransact`, payload);
   return response.data;

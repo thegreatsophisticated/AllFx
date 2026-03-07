@@ -117,6 +117,7 @@ export const accountTransact = async (payload: {
 
 }): Promise<{ message?: string; status?: string }> => {
   const response = await axios.post(`${API_URL}/accountTransact`, payload);
+  console.log("Account Transaction Response:", response.data);
   return response.data;
 };
 
@@ -131,5 +132,6 @@ export const transactionApprove = async (payload: {
   status: "approve" | "cancel";
 }): Promise<{ status?: string; message?: string }> => {
   const response = await axios.post(`${API_URL}/transactionApprove`, payload);
+
   return response.data;
 };

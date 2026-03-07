@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -13,6 +13,8 @@ import {
   ImageIcon,
   X,
   ZoomIn,
+  RefreshCw,
+  ArrowDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -256,6 +258,15 @@ export default function MobileMoney() {
   const [currenciesLoading, setCurrenciesLoading] = useState(true);
   const [refreshKey, setRefreshKey]     = useState(0);
 
+  // ── Pull-to-refresh state ──────────────────────────────────────────────────
+  const scrollRef         = useRef<HTMLDivElement>(null);
+  const touchStartY       = useRef<number | null>(null); // null = not tracking
+  const pullDistanceRef   = useRef(0);                   // mirror of state for onTouchEnd closure
+  const isRefreshing      = useRef(false);               // ref so handlers always read latest value
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing]     = useState(false);
+  const PULL_THRESHOLD = 72;
+
   const reloadTransactions = () => {
     setTxLoading(true);
     fetchTransactions(userId).then((txs) => {
@@ -263,6 +274,75 @@ export default function MobileMoney() {
       setTxLoading(false);
     });
   };
+
+  const triggerRefresh = useCallback(async () => {
+    if (isRefreshing.current) return;
+    isRefreshing.current = true;
+    setRefreshing(true);
+    setPullDistance(0);
+    pullDistanceRef.current = 0;
+    try {
+      const [txs, curr] = await Promise.all([
+        fetchTransactions(userId),
+        fetchCurrencies(),
+      ]);
+      setTransactions(txs);
+      setCurrencies(curr);
+    } finally {
+      setRefreshing(false);
+      isRefreshing.current = false;
+    }
+  }, [userId]);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    // Only begin tracking when scrolled to very top
+    const scrollTop = scrollRef.current?.scrollTop ?? 1;
+    if (scrollTop <= 0) {
+      touchStartY.current = e.touches[0].clientY;
+    } else {
+      touchStartY.current = null;
+    }
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current === null || isRefreshing.current) return;
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta > 0) {
+      // Prevent native scroll while pulling
+      if (scrollRef.current?.scrollTop === 0) e.preventDefault();
+      const dist = Math.min(delta * 0.45, PULL_THRESHOLD + 24);
+      pullDistanceRef.current = dist;
+      setPullDistance(dist);
+    } else {
+      // Scrolling down — stop tracking
+      touchStartY.current = null;
+      pullDistanceRef.current = 0;
+      setPullDistance(0);
+    }
+  };
+
+  const onTouchEnd = () => {
+    if (pullDistanceRef.current >= PULL_THRESHOLD) {
+      triggerRefresh();
+    } else {
+      setPullDistance(0);
+      pullDistanceRef.current = 0;
+    }
+    touchStartY.current = null;
+  };
+
+  // Attach touchmove as non-passive so e.preventDefault() works
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handler = (e: TouchEvent) => {
+      if (touchStartY.current === null || isRefreshing.current) return;
+      const delta = e.touches[0].clientY - touchStartY.current;
+      if (delta > 0 && el.scrollTop === 0) e.preventDefault();
+    };
+    el.addEventListener("touchmove", handler, { passive: false });
+    return () => el.removeEventListener("touchmove", handler);
+  }, []);
 
   useEffect(() => {
     fetchCurrencies().then((c) => { setCurrencies(c); setCurrenciesLoading(false); });
@@ -328,8 +408,38 @@ export default function MobileMoney() {
         <h2 className="text-lg font-display font-bold">Transfer Funds</h2>
       </div>
 
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5">
+      {/* Scrollable body — pull-to-refresh wrapper */}
+      <div className="flex-1 overflow-hidden relative">
+        {/* Pull indicator */}
+        <div
+          className="absolute top-0 left-0 right-0 flex items-center justify-center z-10 pointer-events-none overflow-hidden transition-all duration-200"
+          style={{ height: refreshing ? 52 : Math.max(0, pullDistance) }}
+        >
+          <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            refreshing
+              ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+              : pullDistance >= PULL_THRESHOLD
+              ? "bg-primary/20 text-primary border border-primary/30"
+              : "bg-secondary text-muted-foreground border border-border"
+          }`}>
+            {refreshing ? (
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Refreshing...</>
+            ) : pullDistance >= PULL_THRESHOLD ? (
+              <><RefreshCw className="w-3.5 h-3.5" /> Release to refresh</>
+            ) : (
+              <><ArrowDown className="w-3.5 h-3.5 transition-transform" style={{ transform: `rotate(${Math.min((pullDistance / PULL_THRESHOLD) * 180, 180)}deg)` }} /> Pull to refresh</>
+            )}
+          </div>
+        </div>
+
+        <div
+          ref={scrollRef}
+          className="h-full overflow-y-auto px-4 pb-4 space-y-5"
+          style={{ paddingTop: refreshing ? 60 : Math.max(8, pullDistance) }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
 
         <ProviderToggleGroup selected={selectedProvider} onChange={setSelectedProvider} />
 
@@ -478,7 +588,8 @@ export default function MobileMoney() {
             </div>
           )}
         </div>
-      </div>
+        </div>{/* end inner scroll div */}
+      </div>{/* end ptr wrapper */}
 
       {/* Confirm button */}
       <div className="sticky bottom-0 px-4 py-3 bg-gradient-to-t from-background via-background to-background/0">
@@ -748,12 +859,15 @@ function TransactionRow({
 
           {status === "" && isOwner && (
             <>
-              <span className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-muted-foreground text-xs font-medium">
+              <button
+                onClick={() => openDialog("approve")}
+                className="px-3 py-1.5 rounded-lg border border-accent/40 text-accent text-xs font-semibold hover:bg-accent/10 transition-colors flex items-center gap-1"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 2h14"/><path d="M5 22h14"/><path d="M17 2v4l-5 5-5-5V2"/><path d="M7 22v-4l5-5 5 5v4"/>
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
                 </svg>
-                Pending
-              </span>
+                Approve
+              </button>
               <button
                 onClick={() => openDialog("cancel")}
                 className="px-3 py-1.5 rounded-lg border border-destructive/40 text-destructive text-xs font-semibold hover:bg-destructive/10 transition-colors"

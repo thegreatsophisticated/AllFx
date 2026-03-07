@@ -24,7 +24,7 @@ import {
   transactionApprove,
 } from "@/lib/api-mobile-money";
 
-const PROOF_BASE_URL = "https://irebegrp.com/irebe/images/";
+const PROOF_BASE_URL = "https://irebegrp.com/images/";
 
 // ─── Local wrappers ───────────────────────────────────────────────────────────
 

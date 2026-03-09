@@ -3,7 +3,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   ResponsiveContainer, Tooltip, Cell,
 } from "recharts";
-import { TrendingUp, TrendingDown, BarChart3, LineChart } from "lucide-react";
+import { TrendingUp, TrendingDown, BarChart3, LineChart, FileText, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export type ChartPoint = {
   date: string;
@@ -15,6 +15,12 @@ const formatCurrency = (value: number) =>
 
 const periods = ["1D", "1W", "1M", "3M", "1Y"] as const;
 
+type ReportStatus = "idle" | "loading" | "success" | "error";
+
+interface InvestorReport {
+  [key: string]: any;
+}
+
 interface StockChartProps {
   data: ChartPoint[];
   asset: any;
@@ -22,9 +28,17 @@ interface StockChartProps {
 }
 
 const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
+  const userId = localStorage.getItem("user_id") ?? "";
+
   const [period, setPeriod] = useState<(typeof periods)[number]>("3M");
   const [isLine, setIsLine] = useState(true);
   const [hoveredPoint, setHoveredPoint] = useState<ChartPoint | null>(null);
+
+  // Report state
+  const [reportStatus, setReportStatus] = useState<ReportStatus>("idle");
+  const [reportData, setReportData] = useState<InvestorReport | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [showReport, setShowReport] = useState(false);
 
   const filteredData = useMemo(() => {
     const len = data.length;
@@ -44,6 +58,84 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
 
   const displayPrice = hoveredPoint?.price ?? asset.current_price ?? asset.price;
   const displayDate = hoveredPoint?.date ?? filteredData[filteredData.length - 1]?.date ?? "";
+
+  // ── Generate Investor Report ──────────────────────────────────────────────
+  const handleGenerateReport = async () => {
+    if (!userId) {
+      setReportError("User not authenticated. Please log in.");
+      setReportStatus("error");
+      setShowReport(true);
+      return;
+    }
+
+    if (!asset?.stock_id && !asset?.id) {
+      setReportError("Stock ID is missing.");
+      setReportStatus("error");
+      setShowReport(true);
+      return;
+    }
+
+    setReportStatus("loading");
+    setReportError(null);
+    setReportData(null);
+    setShowReport(true);
+
+    try {
+      const response = await fetch(
+        "https://irebegrp.com/irebe/classes/investor_report.php/getInvestorReport",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            stock_id: asset.stock_id ?? asset.id,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+      }
+
+      const json = await response.json();
+
+      // Handle API-level error messages returned in the response body
+      if (json?.status === "error" || json?.error) {
+        throw new Error(json.message ?? json.error ?? "Failed to generate report.");
+      }
+
+      setReportData(json);
+      setReportStatus("success");
+    } catch (err: any) {
+      setReportError(err.message ?? "An unexpected error occurred.");
+      setReportStatus("error");
+    }
+  };
+
+  // ── Render report rows from response object ───────────────────────────────
+  const renderReportRows = (obj: InvestorReport) => {
+    return Object.entries(obj).map(([key, value]) => {
+      if (value === null || value === undefined || value === "") return null;
+      const label = key
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+      const displayValue =
+        typeof value === "object"
+          ? JSON.stringify(value)
+          : String(value);
+
+      return (
+        <div
+          key={key}
+          className="flex items-start justify-between gap-3 py-2 border-b border-border/40 last:border-0"
+        >
+          <span className="text-xs text-muted-foreground flex-shrink-0 w-1/2">{label}</span>
+          <span className="text-xs font-medium text-right break-words w-1/2">{displayValue}</span>
+        </div>
+      );
+    });
+  };
 
   return (
     <div>
@@ -189,6 +281,69 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
           {isLine ? <BarChart3 className="w-4 h-4" /> : <LineChart className="w-4 h-4" />}
         </button>
       </div>
+
+      {/* ── Generate Report Button ─────────────────────────────────────────── */}
+      <div className="px-4 mt-4">
+        <button
+          onClick={handleGenerateReport}
+          disabled={reportStatus === "loading"}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+        >
+          {reportStatus === "loading" ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Generating Report…
+            </>
+          ) : (
+            <>
+              <FileText className="w-4 h-4" />
+              Generate Investor Report
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* ── Report Panel ───────────────────────────────────────────────────── */}
+      {showReport && (
+        <div className="mx-4 mt-3 rounded-xl border border-border bg-secondary/40 overflow-hidden">
+
+          {/* Loading */}
+          {reportStatus === "loading" && (
+            <div className="flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <p className="text-xs">Fetching your investor report…</p>
+            </div>
+          )}
+
+          {/* Error */}
+          {reportStatus === "error" && (
+            <div className="flex flex-col items-center gap-2 p-4 text-destructive">
+              <AlertCircle className="w-5 h-5" />
+              <p className="text-xs text-center">{reportError}</p>
+              <button
+                onClick={handleGenerateReport}
+                className="text-xs underline underline-offset-2 text-muted-foreground hover:text-foreground mt-1"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {/* Success */}
+          {reportStatus === "success" && reportData && (
+            <div>
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-border/40">
+                <CheckCircle2 className="w-4 h-4 text-accent" />
+                <p className="text-xs font-semibold">Investor Report</p>
+                <span className="ml-auto text-xs text-muted-foreground">{asset.stock_code}</span>
+              </div>
+              <div className="px-4 py-2 max-h-72 overflow-y-auto">
+                {renderReportRows(reportData)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import StockDetailPage from "./pages/StockDetailPage";
 import MobileMoney from "./pages/MobileMoney";
 import UserTopUp from "./pages/UserTopUp";
+import ResetPasswordPage from "./pages/Resetpasswordpage";
 
 const queryClient = new QueryClient();
 
@@ -29,11 +30,13 @@ const App = () => (
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/stock" element={<StockDetailPage />} />
           <Route path="/mobile-money" element={<MobileMoney />} />
           <Route path="/user-top-up" element={<UserTopUp />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
+           
             <Route index element={<PortfolioPage />} />
             <Route path="explore" element={<ExplorePage />} />
           </Route>

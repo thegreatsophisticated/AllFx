@@ -57,3 +57,35 @@ export const logout = async () => {
     localStorage.removeItem("company_id");
   }
 };
+
+// ── Add these two functions to your existing api-auth.ts ──────────────────────
+
+export const requestPasswordReset = async (email: string) => {
+  // Uses the standalone PHP endpoint (form-encoded, not JSON)
+  const response = await axios.post(
+    "https://irebegrp.com/api/reset_password.php",
+    new URLSearchParams({ email }),          // matches Flutter's body: {'email': email}
+  );
+  const data = response.data;
+  if (data?.status === "success" || data?.message?.toLowerCase().includes("sent")) return data;
+  throw new Error(data?.message ?? "Failed to send reset email");
+};
+
+
+// export const resetPassword = async (email: string, password: string) => {
+//   const response = await axios.post(`${API_URL}/resetPassword`, { email, password });
+//   const data = response.data;
+//   if (data?.status === "success" || data?.message?.toLowerCase().includes("success")) return data;
+//   throw new Error(data?.message ?? "Failed to reset password");
+// };
+
+
+// Add this to your existing api-auth.ts
+// (remove requestPasswordReset if you added it earlier — it's not needed)
+
+export const resetPassword = async (email: string, password: string) => {
+  const response = await axios.post(`${API_URL}/resetPassword`, { email, password });
+  const data = response.data;
+  if (data?.status === "success" || data?.message?.toLowerCase().includes("success")) return data;
+  throw new Error(data?.message ?? "Failed to reset password");
+};

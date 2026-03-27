@@ -75,7 +75,7 @@ const LoginPage = () => {
           />
 
           <button
-            onClick={() => navigate("/forgot-password")}
+            onClick={() => navigate("/reset-password")}
             className="text-sm text-primary hover:underline"
           >
             Forgot your password?

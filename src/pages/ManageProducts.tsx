@@ -26,7 +26,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const API_BASE = "https://irebegrp.com/irebe/index.php";
+// const API_BASE = "https://irebegrp.com/irebe/index.php";
+const API_BASE = import.meta.env.VITE_PUBLIC_API_URL;
 const CATEGORIES = ["stocks", "currencies", "futures"] as const;
 type Category = (typeof CATEGORIES)[number];
 

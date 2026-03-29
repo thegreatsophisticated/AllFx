@@ -30,6 +30,7 @@ const formatCurrency = (value: number) =>
 const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  console.log("User data in ProfileDrawer:", user);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,7 +80,9 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
       setIsEditing(false);
       toast.success("Profile updated successfully");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update profile");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update profile",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -124,12 +127,17 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
       >
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-muted-foreground animate-pulse">Loading profile...</p>
+            <p className="text-sm text-muted-foreground animate-pulse">
+              Loading profile...
+            </p>
           </div>
         ) : error ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-2 px-6">
             <p className="text-sm text-destructive text-center">{error}</p>
-            <button onClick={() => setIsLoading(true)} className="text-xs text-primary underline">
+            <button
+              onClick={() => setIsLoading(true)}
+              className="text-xs text-primary underline"
+            >
               Try again
             </button>
           </div>
@@ -145,7 +153,11 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
                   onClick={() => setIsEditing(!isEditing)}
                   className="p-2 rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {isEditing ? <X className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+                  {isEditing ? (
+                    <X className="w-4 h-4" />
+                  ) : (
+                    <Pencil className="w-4 h-4" />
+                  )}
                 </button>
               </div>
               <h2 className="text-lg font-display font-bold leading-tight">
@@ -165,7 +177,9 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
                         <Wallet className="w-4 h-4 text-primary" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground leading-none mb-1">Account Balance</p>
+                        <p className="text-xs text-muted-foreground leading-none mb-1">
+                          Account Balance
+                        </p>
                         <p className="text-lg font-bold text-foreground leading-none">
                           RWF {formatCurrency(balance)}
                         </p>
@@ -199,6 +213,20 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
                     </div>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
+                 
+                  {/* After — replace with: */}
+                  {user?.user_id === 1 && (
+                    <Link
+                      to="/manage-products"
+                      className="flex items-center justify-between w-full px-3 py-2 rounded-xl bg-secondary border border-border text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                        Manage Products
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
                 </div>
               </div>
             )}
@@ -212,12 +240,36 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
 
                 {isEditing ? (
                   <div className="space-y-3">
-                    <EditField label="First Name" value={form.first_name} onChange={(v) => setForm({ ...form, first_name: v })} />
-                    <EditField label="Last Name"  value={form.last_name}  onChange={(v) => setForm({ ...form, last_name: v })} />
-                    <EditField label="Phone"      value={form.phone}      onChange={(v) => setForm({ ...form, phone: v })} />
-                    <EditField label="Country"    value={form.country}    onChange={(v) => setForm({ ...form, country: v })} />
-                    <EditField label="State"      value={form.state}      onChange={(v) => setForm({ ...form, state: v })} />
-                    <EditField label="City"       value={form.city}       onChange={(v) => setForm({ ...form, city: v })} />
+                    <EditField
+                      label="First Name"
+                      value={form.first_name}
+                      onChange={(v) => setForm({ ...form, first_name: v })}
+                    />
+                    <EditField
+                      label="Last Name"
+                      value={form.last_name}
+                      onChange={(v) => setForm({ ...form, last_name: v })}
+                    />
+                    <EditField
+                      label="Phone"
+                      value={form.phone}
+                      onChange={(v) => setForm({ ...form, phone: v })}
+                    />
+                    <EditField
+                      label="Country"
+                      value={form.country}
+                      onChange={(v) => setForm({ ...form, country: v })}
+                    />
+                    <EditField
+                      label="State"
+                      value={form.state}
+                      onChange={(v) => setForm({ ...form, state: v })}
+                    />
+                    <EditField
+                      label="City"
+                      value={form.city}
+                      onChange={(v) => setForm({ ...form, city: v })}
+                    />
                     <button
                       onClick={handleSave}
                       disabled={isSaving}
@@ -229,10 +281,29 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <ProfileItem icon={Mail}   label="Email"    value={user?.email ?? "—"} />
-                    <ProfileItem icon={Phone}  label="Phone"    value={user?.phone ?? "—"} />
-                    <ProfileItem icon={User}   label="Name"     value={`${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "—"} />
-                    <ProfileItem icon={MapPin} label="Location" value={location} />
+                    <ProfileItem
+                      icon={Mail}
+                      label="Email"
+                      value={user?.email ?? "—"}
+                    />
+                    <ProfileItem
+                      icon={Phone}
+                      label="Phone"
+                      value={user?.phone ?? "—"}
+                    />
+                    <ProfileItem
+                      icon={User}
+                      label="Name"
+                      value={
+                        `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() ||
+                        "—"
+                      }
+                    />
+                    <ProfileItem
+                      icon={MapPin}
+                      label="Location"
+                      value={location}
+                    />
                   </div>
                 )}
               </div>

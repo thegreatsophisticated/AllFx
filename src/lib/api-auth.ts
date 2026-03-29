@@ -63,7 +63,7 @@ export const logout = async () => {
 export const requestPasswordReset = async (email: string) => {
   // Uses the standalone PHP endpoint (form-encoded, not JSON)
   const response = await axios.post(
-    "https://irebegrp.com/api/reset_password.php",
+    "https://irebegroup.com/api/reset_password.php",
     new URLSearchParams({ email }),          // matches Flutter's body: {'email': email}
   );
   const data = response.data;

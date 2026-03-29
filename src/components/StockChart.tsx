@@ -82,7 +82,7 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
 
     try {
       const response = await fetch(
-        "https://irebegrp.com/irebe/classes/investor_report.php/getInvestorReport",
+        "https://irebegroup.com/irebe/classes/investor_report.php/getInvestorReport",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

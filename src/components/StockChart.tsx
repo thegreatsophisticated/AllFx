@@ -60,57 +60,121 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
   const displayDate = hoveredPoint?.date ?? filteredData[filteredData.length - 1]?.date ?? "";
 
   // ── Generate Investor Report ──────────────────────────────────────────────
+  // const handleGenerateReport = async () => {
+  //   if (!userId) {
+  //     setReportError("User not authenticated. Please log in.");
+  //     setReportStatus("error");
+  //     setShowReport(true);
+  //     return;
+  //   }
+
+  //   if (!asset?.stock_id && !asset?.id) {
+  //     setReportError("Stock ID is missing.");
+  //     setReportStatus("error");
+  //     setShowReport(true);
+  //     return;
+  //   }
+
+  //   setReportStatus("loading");
+  //   setReportError(null);
+  //   setReportData(null);
+  //   setShowReport(true);
+
+  //   try {
+     
+  //     const response = await fetch(
+  //       "https://irebegroup.com/irebe/classes/investor_report.php/getInvestorReport",
+  //       {
+  //         method: "POST",
+  //         // headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           user_id: 1,
+  //           stock_id: 2,
+  //         }),
+  //       }
+  //     );
+  //     console.log("response export", response);
+  //     if (!response.ok) {
+  //       throw new Error(`Server error: ${response.status} ${response.statusText}`);
+  //     }
+
+  //     const json = await response.json();
+
+  //     // Handle API-level error messages returned in the response body
+  //     if (json?.status === "error" || json?.error) {
+  //       throw new Error(json.message ?? json.error ?? "Failed to generate report.");
+  //     }
+
+  //     setReportData(json);
+  //     setReportStatus("success");
+  //   } catch (err: any) {
+  //     setReportError(err.message ?? "An unexpected error occurred.");
+  //     setReportStatus("error");
+  //   }
+  // };
   const handleGenerateReport = async () => {
-    if (!userId) {
-      setReportError("User not authenticated. Please log in.");
-      setReportStatus("error");
-      setShowReport(true);
-      return;
-    }
-
-    if (!asset?.stock_id && !asset?.id) {
-      setReportError("Stock ID is missing.");
-      setReportStatus("error");
-      setShowReport(true);
-      return;
-    }
-
-    setReportStatus("loading");
-    setReportError(null);
-    setReportData(null);
+  if (!userId) {
+    setReportError("User not authenticated. Please log in.");
+    setReportStatus("error");
     setShowReport(true);
+    return;
+  }
 
-    try {
-      const response = await fetch(
-        "https://irebegroup.com/irebe/classes/investor_report.php/getInvestorReport",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: userId,
-            stock_id: asset.stock_id ?? asset.id,
-          }),
-        }
-      );
+  if (!asset?.stock_id && !asset?.id) {
+    setReportError("Stock ID is missing.");
+    setReportStatus("error");
+    setShowReport(true);
+    return;
+  }
 
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+  setReportStatus("loading");
+  setReportError(null);
+  setReportData(null);
+  setShowReport(true);
+
+  try {
+    const response = await fetch(
+      "https://irebegroup.com/irebe/classes/investor_report.php/getInvestorReport",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: userId,
+          stock_id: asset?.stock_id ?? asset?.id,
+        }),
       }
+    );
 
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status} ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get("Content-Type") ?? "";
+
+    if (contentType.includes("application/pdf")) {
+      // ✅ API returns a PDF — download it directly
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `investor-report-${asset.stock_code ?? "report"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setReportStatus("success");
+      setReportData({ message: "Your report has been downloaded successfully." });
+    } else {
+      // JSON response
       const json = await response.json();
-
-      // Handle API-level error messages returned in the response body
       if (json?.status === "error" || json?.error) {
         throw new Error(json.message ?? json.error ?? "Failed to generate report.");
       }
-
       setReportData(json);
       setReportStatus("success");
-    } catch (err: any) {
-      setReportError(err.message ?? "An unexpected error occurred.");
-      setReportStatus("error");
     }
-  };
+  } catch (err: any) {
+    setReportError(err.message ?? "An unexpected error occurred.");
+    setReportStatus("error");
+  }
+};
 
   // ── Render report rows from response object ───────────────────────────────
   const renderReportRows = (obj: InvestorReport) => {

@@ -23,19 +23,34 @@ import {
   AlertTriangle,
   X,
   CheckCircle2,
+  AlertCircle,
+  ImageOff,
 } from "lucide-react";
 import { toast } from "sonner";
 
-// const API_BASE = "https://irebegrp.com/irebe/index.php";
 const API_BASE = import.meta.env.VITE_PUBLIC_API_URL;
 const CATEGORIES = ["stocks", "currencies", "futures"] as const;
 type Category = (typeof CATEGORIES)[number];
 
-// ── Category meta ──────────────────────────────────────────────────────────
-const CAT_META: Record<Category, { icon: React.ElementType; color: string; bg: string }> = {
-  stocks:     { icon: BarChart2,   color: "text-blue-400",   bg: "bg-blue-400/15 border-blue-400/30"   },
-  currencies: { icon: Coins,       color: "text-emerald-400", bg: "bg-emerald-400/15 border-emerald-400/30" },
-  futures:    { icon: TrendingUp,  color: "text-orange-400", bg: "bg-orange-400/15 border-orange-400/30" },
+const CAT_META: Record<
+  Category,
+  { icon: React.ElementType; color: string; bg: string }
+> = {
+  stocks: {
+    icon: BarChart2,
+    color: "text-blue-400",
+    bg: "bg-blue-400/15 border-blue-400/30",
+  },
+  currencies: {
+    icon: Coins,
+    color: "text-emerald-400",
+    bg: "bg-emerald-400/15 border-emerald-400/30",
+  },
+  futures: {
+    icon: TrendingUp,
+    color: "text-orange-400",
+    bg: "bg-orange-400/15 border-orange-400/30",
+  },
 };
 
 interface Asset {
@@ -75,7 +90,9 @@ function DeleteDialog({
           <div>
             <p className="text-base font-bold text-foreground">Delete Product</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Are you sure you want to delete <span className="font-semibold text-foreground">{name}</span>? This cannot be undone.
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-foreground">{name}</span>?
+              This cannot be undone.
             </p>
           </div>
         </div>
@@ -98,6 +115,28 @@ function DeleteDialog({
         </div>
       </motion.div>
     </div>
+  );
+}
+
+// ── Inline error banner ────────────────────────────────────────────────────
+function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      className="flex items-start gap-3 px-3.5 py-3 rounded-xl bg-destructive/10 border border-destructive/30"
+    >
+      <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+      <p className="flex-1 text-sm text-destructive font-medium leading-snug">{message}</p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="text-destructive/60 hover:text-destructive transition-colors flex-shrink-0"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </motion.div>
   );
 }
 
@@ -128,46 +167,60 @@ const inputCls =
 // ── Main Component ─────────────────────────────────────────────────────────
 const ManageProducts = () => {
   const navigate = useNavigate();
-  const userId   = localStorage.getItem("user_id") ?? "";
+  const userId = localStorage.getItem("user_id") ?? "";
 
   // form state
-  const [stockName, setStockName]         = useState("");
-  const [stockCode, setStockCode]         = useState("");
-  const [category, setCategory]           = useState<Category | "">("");
-  const [price, setPrice]                 = useState("");
-  const [quantity, setQuantity]           = useState("");
-  const [ownerEmail, setOwnerEmail]       = useState("");
-  const [description, setDescription]     = useState("");
-  const [imageUrl, setImageUrl]           = useState("");
-  const [paybackDate, setPaybackDate]     = useState("");
-  const [rate, setRate]                   = useState("");
-  const [formLoading, setFormLoading]     = useState(false);
-  const [formSuccess, setFormSuccess]     = useState(false);
+  const [stockName, setStockName] = useState("");
+  const [stockCode, setStockCode] = useState("");
+  const [category, setCategory] = useState<Category | "">("");
+  const [price, setPrice] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [paybackDate, setPaybackDate] = useState("");
+  const [rate, setRate] = useState("");
+  const [formLoading, setFormLoading] = useState(false);
+  const [formSuccess, setFormSuccess] = useState(false);
+  // NEW: inline error state + image validity
+  const [formError, setFormError] = useState<string | null>(null);
+  const [imageValid, setImageValid] = useState<boolean | null>(null); // null=unknown, true=ok, false=broken
 
   // assets list state
-  const [assets, setAssets]               = useState<Asset[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [assetsLoading, setAssetsLoading] = useState(true);
 
   // delete dialog
-  const [deleteTarget, setDeleteTarget]   = useState<Asset | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Asset | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Clear image validity when URL changes
+  useEffect(() => {
+    if (!imageUrl) {
+      setImageValid(null);
+      return;
+    }
+    setImageValid(null); // reset to "checking" on each change
+  }, [imageUrl]);
 
   // ── Load assets ────────────────────────────────────────────────────────
   const loadAssets = async () => {
     setAssetsLoading(true);
     try {
-      const res = await axios.post(`${API_BASE}/getAllStocks`, { user_id: userId });
+      const res = await axios.post(`${API_BASE}/getAllStocks`, {
+        user_id: userId,
+      });
       const data = res.data;
       if (Array.isArray(data)) {
         setAssets(
           data.map((a: any) => ({
-            id:         a.id?.toString() ?? "",
+            id: a.id?.toString() ?? "",
             stock_name: a.stock_name ?? "",
             stock_code: a.stock_code ?? "",
-            category:   a.category ?? "",
-            quantity:   a.quantity?.toString() ?? "0",
-            price:      a.price?.toString() ?? "0",
-            image:      a.logo ?? a.image ?? "",
+            category: a.category ?? "",
+            quantity: a.quantity?.toString() ?? "0",
+            price: a.price?.toString() ?? "0",
+            image: a.logo ?? a.image ?? "",
           }))
         );
       }
@@ -178,52 +231,73 @@ const ManageProducts = () => {
     }
   };
 
-  useEffect(() => { loadAssets(); }, []);
+  useEffect(() => {
+    loadAssets();
+  }, []);
 
   // ── Add product ────────────────────────────────────────────────────────
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stockName || !stockCode || !category || !price || !quantity || !ownerEmail || !description || !imageUrl) {
-      toast.error("Please fill all fields");
+    setFormError(null);
+
+    if (
+      !stockName || !stockCode || !category || !price ||
+      !quantity || !ownerEmail || !description || !imageUrl
+    ) {
+      const msg = "Please fill in all required fields";
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
     if (category === "futures" && (!paybackDate || !rate)) {
-      toast.error("Please fill payback date and rate for futures");
+      const msg = "Please fill in payback date and rate for futures";
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
+    if (imageValid === false) {
+      const msg = "The image URL appears to be broken — please use a valid image link";
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
+
     setFormLoading(true);
     try {
       const res = await axios.post(
         `${API_BASE}/addISEProduct`,
         {
-          stockName,
-          stockCode,
-          category,
-          quantity,
-          price,
-          paybackDate,
-          rate,
-          ownerEmail,
-          description,
-          image:  imageUrl,
+          stockName, stockCode, category, quantity, price,
+          paybackDate, rate, ownerEmail, description,
+          image: imageUrl,
           userID: Number(userId),
         },
         { headers: { "Content-Type": "application/json" } }
       );
+
       if (res.data?.status === "success") {
         toast.success(res.data?.message ?? "Product added!");
         setFormSuccess(true);
         setTimeout(() => setFormSuccess(false), 2500);
-        // reset form
         setStockName(""); setStockCode(""); setCategory("");
         setPrice(""); setQuantity(""); setOwnerEmail("");
-        setDescription(""); setImageUrl(""); setPaybackDate(""); setRate("");
+        setDescription(""); setImageUrl(""); setImageValid(null);
+        setPaybackDate(""); setRate("");
         loadAssets();
       } else {
-        toast.error(res.data?.message ?? "Failed to add product");
+        // ✅ Properly surfaces the API error message
+        const msg = res.data?.message ?? "Failed to add product";
+        setFormError(msg);
+        toast.error(msg);
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? "Network error");
+      // ✅ Surfaces network / HTTP error messages
+      const msg =
+        err?.response?.data?.message ??
+        err?.message ??
+        "Network error — please try again";
+      setFormError(msg);
+      toast.error(msg);
     } finally {
       setFormLoading(false);
     }
@@ -235,8 +309,8 @@ const ManageProducts = () => {
     setDeleteLoading(true);
     try {
       const res = await axios.post(
-        `${API_BASE}/removeMallProduct`,
-        { stockId: deleteTarget.id },
+        `${API_BASE}/removeISEProduct`,
+        { stockId: deleteTarget.id, user_Id: userId },
         { headers: { "Content-Type": "application/json" } }
       );
       if (res.data?.status === "success") {
@@ -257,7 +331,6 @@ const ManageProducts = () => {
 
   return (
     <div className="app-shell bg-background flex flex-col">
-
       {/* ── Header ── */}
       <div className="flex items-center gap-3 px-4 pt-6 pb-2 flex-shrink-0">
         <button
@@ -267,14 +340,17 @@ const ManageProducts = () => {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div>
-          <h2 className="text-lg font-display font-bold leading-tight">Manage Products</h2>
-          <p className="text-xs text-muted-foreground">Add &amp; remove AllFx products</p>
+          <h2 className="text-lg font-display font-bold leading-tight">
+            Manage Products
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Add &amp; remove AllFx products
+          </p>
         </div>
       </div>
 
       {/* ── Scrollable Body ── */}
       <div className="flex-1 overflow-y-auto px-4 pb-8 pt-3 space-y-6">
-
         {/* ══ ADD FORM ══════════════════════════════════════════════════════ */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -290,6 +366,16 @@ const ManageProducts = () => {
           </div>
 
           <form onSubmit={handleAdd} className="p-4 flex flex-col gap-4">
+
+            {/* ✅ Inline error banner — shown when API returns an error */}
+            <AnimatePresence>
+              {formError && (
+                <ErrorBanner
+                  message={formError}
+                  onDismiss={() => setFormError(null)}
+                />
+              )}
+            </AnimatePresence>
 
             {/* Stock Name */}
             <Field label="Stock Name" icon={Package}>
@@ -319,15 +405,17 @@ const ManageProducts = () => {
                   onChange={(e) => setCategory(e.target.value as Category)}
                   className={`${inputCls} appearance-none pr-9`}
                 >
-                  <option value="" disabled>Select a category</option>
+                  <option value="" disabled>
+                    Select a category
+                  </option>
                   {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                    <option key={c} value={c}>
+                      {c.charAt(0).toUpperCase() + c.slice(1)}
+                    </option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               </div>
-
-              {/* Category badge */}
               <AnimatePresence>
                 {catMeta && (
                   <motion.div
@@ -336,7 +424,9 @@ const ManageProducts = () => {
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold ${catMeta.bg}`}>
+                    <div
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold ${catMeta.bg}`}
+                    >
                       <catMeta.icon className={`w-3.5 h-3.5 ${catMeta.color}`} />
                       <span className={catMeta.color}>{category}</span>
                     </div>
@@ -419,14 +509,21 @@ const ManageProducts = () => {
               />
             </Field>
 
-            {/* Image URL */}
+            {/* ✅ Image URL with validation preview */}
             <Field label="Image URL" icon={ImageIcon}>
               <input
-                className={inputCls}
+                className={`${inputCls} ${
+                  imageValid === false
+                    ? "border-destructive focus:border-destructive"
+                    : imageValid === true
+                    ? "border-emerald-500 focus:border-emerald-500"
+                    : ""
+                }`}
                 placeholder="https://…"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
               />
+
               <AnimatePresence>
                 {imageUrl && (
                   <motion.div
@@ -435,18 +532,48 @@ const ManageProducts = () => {
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="relative rounded-xl overflow-hidden border border-border mt-1 bg-secondary">
+                    <div className="relative rounded-xl overflow-hidden border border-border mt-1 bg-secondary min-h-[80px] flex items-center justify-center">
+
+                      {/* The actual image — hidden until load resolves */}
                       <img
                         src={imageUrl}
                         alt="preview"
-                        className="w-full max-h-36 object-cover"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                        }}
+                        className={`w-full max-h-40 object-cover transition-opacity duration-300 ${
+                          imageValid === true ? "opacity-100" : "opacity-0 absolute inset-0"
+                        }`}
+                        onLoad={() => setImageValid(true)}
+                        onError={() => setImageValid(false)}
                       />
+
+                      {/* Loading indicator */}
+                      {imageValid === null && (
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground py-4">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <p className="text-xs">Checking image…</p>
+                        </div>
+                      )}
+
+                      {/* Broken image state */}
+                      {imageValid === false && (
+                        <div className="flex flex-col items-center gap-2 text-destructive py-4">
+                          <ImageOff className="w-5 h-5" />
+                          <p className="text-xs font-medium">Image failed to load</p>
+                          <p className="text-[11px] text-muted-foreground">Check the URL and try again</p>
+                        </div>
+                      )}
+
+                      {/* ✅ Success badge overlaid on the image */}
+                      {imageValid === true && (
+                        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/90 text-white text-[10px] font-bold">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Image OK
+                        </div>
+                      )}
+
+                      {/* Clear button */}
                       <button
                         type="button"
-                        onClick={() => setImageUrl("")}
+                        onClick={() => { setImageUrl(""); setImageValid(null); }}
                         className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
                       >
                         <X className="w-3 h-3" />
@@ -469,11 +596,17 @@ const ManageProducts = () => {
               } disabled:opacity-60`}
             >
               {formLoading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Adding…</>
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Adding…
+                </>
               ) : formSuccess ? (
-                <><CheckCircle2 className="w-4 h-4" /> Product Added!</>
+                <>
+                  <CheckCircle2 className="w-4 h-4" /> Product Added!
+                </>
               ) : (
-                <><Plus className="w-4 h-4" /> Add Product</>
+                <>
+                  <Plus className="w-4 h-4" /> Add Product
+                </>
               )}
             </motion.button>
           </form>
@@ -495,7 +628,10 @@ const ManageProducts = () => {
           {assetsLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-20 rounded-xl bg-card border border-border animate-pulse" />
+                <div
+                  key={i}
+                  className="h-20 rounded-xl bg-card border border-border animate-pulse"
+                />
               ))}
             </div>
           ) : assets.length === 0 ? (
@@ -516,7 +652,6 @@ const ManageProducts = () => {
                     transition={{ delay: i * 0.035 }}
                     className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border"
                   >
-                    {/* Logo */}
                     <div className="w-11 h-11 rounded-xl overflow-hidden bg-secondary flex-shrink-0 flex items-center justify-center border border-border">
                       {asset.image ? (
                         <img
@@ -531,23 +666,22 @@ const ManageProducts = () => {
                         <Icon className={`w-5 h-5 ${meta.color}`} />
                       )}
                     </div>
-
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-sm font-bold text-foreground truncate">
                           {asset.stock_name}
                         </p>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${meta.bg} ${meta.color}`}>
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${meta.bg} ${meta.color}`}
+                        >
                           {asset.stock_code}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {Number(asset.quantity).toLocaleString()} shares · RWF {Number(asset.price).toLocaleString()}
+                        {Number(asset.quantity).toLocaleString()} shares · RWF{" "}
+                        {Number(asset.price).toLocaleString()}
                       </p>
                     </div>
-
-                    {/* Delete */}
                     <button
                       onClick={() => setDeleteTarget(asset)}
                       className="flex-shrink-0 w-8 h-8 rounded-lg bg-destructive/10 hover:bg-destructive/20 flex items-center justify-center transition-colors"

@@ -239,7 +239,7 @@ function ProviderToggleGroup({
 
 export default function MobileMoney() {
   const navigate = useNavigate();
-  const userId   = localStorage.getItem("user_id") ?? "";
+  const userId   = sessionStorage.getItem("user_id") ?? "";
 
   const [direction, setDirection]       = useState<Direction>("in");
   const [currencies, setCurrencies]     = useState<any[]>([]);

@@ -167,7 +167,7 @@ const inputCls =
 // ── Main Component ─────────────────────────────────────────────────────────
 const ManageProducts = () => {
   const navigate = useNavigate();
-  const userId = localStorage.getItem("user_id") ?? "";
+  const userId = sessionStorage.getItem("user_id") ?? "";
 
   // form state
   const [stockName, setStockName] = useState("");

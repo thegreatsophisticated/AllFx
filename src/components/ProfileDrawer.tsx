@@ -51,7 +51,7 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
       setIsLoading(true);
       setError(null);
       try {
-        const userId = localStorage.getItem("user_id") ?? "";
+        const userId = sessionStorage.getItem("user_id") ?? "";
         const data = await getUserData(userId);
         setUser(data);
         setForm({
@@ -72,7 +72,7 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
   }, [open]);
 
   const handleSave = async () => {
-    const userId = localStorage.getItem("user_id") ?? "";
+    const userId = sessionStorage.getItem("user_id") ?? "";
     setIsSaving(true);
     try {
       await updateUserInfo(userId, form);

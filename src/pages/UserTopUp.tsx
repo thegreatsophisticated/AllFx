@@ -37,8 +37,8 @@ const STEPS = {
 ════════════════════════════════════════════ */
 const UserTopUp = () => {
   const navigate     = useNavigate();
-  const userId       = localStorage.getItem("user_id") ?? "";
-  const userEmail    = localStorage.getItem("email") ?? localStorage.getItem("userEmail") ?? `User #${userId}`;
+  const userId       = sessionStorage.getItem("user_id") ?? "";
+  const userEmail    = sessionStorage.getItem("email") ?? sessionStorage.getItem("userEmail") ?? `User #${userId}`;
   const fileInputRef = useRef(null);
 
   const [step, setStep]                 = useState(STEPS.FORM);

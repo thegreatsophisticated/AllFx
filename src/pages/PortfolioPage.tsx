@@ -12,7 +12,7 @@ const PortfolioPage = () => {
   useEffect(() => {
     const fetchPortfolio = async () => {
       try {
-        const userId = localStorage.getItem("user_id") ?? "";
+        const userId = sessionStorage.getItem("user_id") ?? "";
         const data = await getUserStockProducts(userId);
         setHoldings(data);
       } catch (err) {

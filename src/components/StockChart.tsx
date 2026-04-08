@@ -3,7 +3,10 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   ResponsiveContainer, Tooltip, Cell,
 } from "recharts";
-import { TrendingUp, TrendingDown, BarChart3, LineChart, FileText, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  TrendingUp, TrendingDown, BarChart3, LineChart,
+  FileText, Loader2, AlertCircle, CheckCircle2,
+} from "lucide-react";
 
 export type ChartPoint = {
   date: string;
@@ -27,8 +30,60 @@ interface StockChartProps {
   chartStats: any;
 }
 
+// ── Mobile-safe PDF opener ────────────────────────────────────────────────
+const openPdfMobile = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const newTab = window.open(url, "_blank");
+  if (!newTab) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+};
+
+// ── Filter by period (1D = last 24 hours, not just 1 point) ──────────────
+const filterByPeriod = (
+  data: ChartPoint[],
+  period: (typeof periods)[number]
+): ChartPoint[] => {
+  if (!data.length) return data;
+
+  const now = new Date();
+
+  if (period === "1D") {
+    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const filtered = data.filter((d) => new Date(d.date) >= cutoff);
+    // Always show at least 1 point so the chart isn't empty
+    return filtered.length ? filtered : data.slice(-1);
+  }
+
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysMap: Record<string, number> = { "1W": 7, "1M": 30, "3M": 90, "1Y": 365 };
+  const days = daysMap[period];
+  if (days) {
+    const cutoff = new Date(now.getTime() - days * msPerDay);
+    const filtered = data.filter((d) => new Date(d.date) >= cutoff);
+    return filtered.length ? filtered : data;
+  }
+
+  return data; // "1Y" fallback / all
+};
+
 const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
-  const userId = localStorage.getItem("user_id") ?? "";
+  // ── Resolve user identity without caching stale data ─────────────────
+  // Always read fresh from sessionStorage (set at login, cleared on logout).
+  // We deliberately avoid sessionStorage so stale data can't mislead users.
+  const userId = sessionStorage.getItem("user_id") ?? "";
+  const userIdNum = Number(userId);
+
+  // ── Owner check: only stock owner sees "Generate Investor Report" ──────
+  const isOwner = !!userId && asset?.owner_id === userIdNum;
 
   const [period, setPeriod] = useState<(typeof periods)[number]>("3M");
   const [isLine, setIsLine] = useState(true);
@@ -40,155 +95,99 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
   const [reportError, setReportError] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
 
-  const filteredData = useMemo(() => {
-    const len = data.length;
-    if (period === "1D") return data.slice(Math.max(0, len - 1));
-    if (period === "1W") return data.slice(Math.max(0, len - 7));
-    if (period === "1M") return data.slice(Math.max(0, len - 30));
-    if (period === "3M") return data.slice(Math.max(0, len - 90));
-    return data;
-  }, [data, period]);
+  // ── Filter data for selected period ──────────────────────────────────
+  const filteredData = useMemo(
+    () => filterByPeriod(data, period),
+    [data, period]
+  );
 
   const prices = filteredData.map((d) => d.price);
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
+  const min = prices.length ? Math.min(...prices) : 0;
+  const max = prices.length ? Math.max(...prices) : 1;
 
   const isUp = (asset.finalchange ?? 0) >= 0;
   const color = isUp ? "hsl(142,71%,45%)" : "hsl(0,72%,51%)";
 
   const displayPrice = hoveredPoint?.price ?? asset.current_price ?? asset.price;
-  const displayDate = hoveredPoint?.date ?? filteredData[filteredData.length - 1]?.date ?? "";
+  const displayDate =
+    hoveredPoint?.date ?? filteredData[filteredData.length - 1]?.date ?? "";
 
-  // ── Generate Investor Report ──────────────────────────────────────────────
-  // const handleGenerateReport = async () => {
-  //   if (!userId) {
-  //     setReportError("User not authenticated. Please log in.");
-  //     setReportStatus("error");
-  //     setShowReport(true);
-  //     return;
-  //   }
-
-  //   if (!asset?.stock_id && !asset?.id) {
-  //     setReportError("Stock ID is missing.");
-  //     setReportStatus("error");
-  //     setShowReport(true);
-  //     return;
-  //   }
-
-  //   setReportStatus("loading");
-  //   setReportError(null);
-  //   setReportData(null);
-  //   setShowReport(true);
-
-  //   try {
-     
-  //     const response = await fetch(
-  //       "https://irebegroup.com/irebe/classes/investor_report.php/getInvestorReport",
-  //       {
-  //         method: "POST",
-  //         // headers: { "Content-Type": "application/json" },
-  //         body: JSON.stringify({
-  //           user_id: 1,
-  //           stock_id: 2,
-  //         }),
-  //       }
-  //     );
-  //     console.log("response export", response);
-  //     if (!response.ok) {
-  //       throw new Error(`Server error: ${response.status} ${response.statusText}`);
-  //     }
-
-  //     const json = await response.json();
-
-  //     // Handle API-level error messages returned in the response body
-  //     if (json?.status === "error" || json?.error) {
-  //       throw new Error(json.message ?? json.error ?? "Failed to generate report.");
-  //     }
-
-  //     setReportData(json);
-  //     setReportStatus("success");
-  //   } catch (err: any) {
-  //     setReportError(err.message ?? "An unexpected error occurred.");
-  //     setReportStatus("error");
-  //   }
-  // };
+  // ── Generate Investor Report ──────────────────────────────────────────
   const handleGenerateReport = async () => {
-  if (!userId) {
-    setReportError("User not authenticated. Please log in.");
-    setReportStatus("error");
-    setShowReport(true);
-    return;
-  }
-
-  if (!asset?.stock_id && !asset?.id) {
-    setReportError("Stock ID is missing.");
-    setReportStatus("error");
-    setShowReport(true);
-    return;
-  }
-
-  setReportStatus("loading");
-  setReportError(null);
-  setReportData(null);
-  setShowReport(true);
-
-  try {
-    const response = await fetch(
-      "https://irebegroup.com/irebe/classes/investor_report.php/getInvestorReport",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          user_id: userId,
-          stock_id: asset?.stock_id ?? asset?.id,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status} ${response.statusText}`);
+    if (!userId) {
+      setReportError("User not authenticated. Please log in.");
+      setReportStatus("error");
+      setShowReport(true);
+      return;
     }
 
-    const contentType = response.headers.get("Content-Type") ?? "";
+    if (!asset?.stock_id && !asset?.id) {
+      setReportError("Stock ID is missing.");
+      setReportStatus("error");
+      setShowReport(true);
+      return;
+    }
 
-    if (contentType.includes("application/pdf")) {
-      // ✅ API returns a PDF — download it directly
+    setReportStatus("loading");
+    setReportError(null);
+    setReportData(null);
+    setShowReport(true);
+
+    try {
+      const response = await fetch(
+        "https://irebegroup.com/irebe/classes/investor_report.php/getInvestorReport",
+        {
+          method: "POST",
+          // Prevent any proxy/browser caching of this sensitive report
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            stock_id: asset?.stock_id ?? asset?.id,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+      }
+
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `investor-report-${asset.stock_code ?? "report"}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setReportStatus("success");
-      setReportData({ message: "Your report has been downloaded successfully." });
-    } else {
-      // JSON response
-      const json = await response.json();
-      if (json?.status === "error" || json?.error) {
-        throw new Error(json.message ?? json.error ?? "Failed to generate report.");
-      }
-      setReportData(json);
-      setReportStatus("success");
-    }
-  } catch (err: any) {
-    setReportError(err.message ?? "An unexpected error occurred.");
-    setReportStatus("error");
-  }
-};
+      const contentType = response.headers.get("Content-Type") ?? blob.type ?? "";
+      const isPdf =
+        contentType.includes("application/pdf") ||
+        contentType.includes("octet-stream") ||
+        (await blob.slice(0, 4).text().then((t) => t.startsWith("%PDF")));
 
-  // ── Render report rows from response object ───────────────────────────────
-  const renderReportRows = (obj: InvestorReport) => {
-    return Object.entries(obj).map(([key, value]) => {
+      if (isPdf) {
+        const filename = `investor-report-${asset.stock_code ?? "report"}.pdf`;
+        openPdfMobile(blob, filename);
+        setReportStatus("success");
+        setReportData({ message: "Your report is opening in a new tab." });
+      } else {
+        const text = await blob.text();
+        const json = JSON.parse(text);
+        if (json?.status === "error" || json?.error) {
+          throw new Error(json.message ?? json.error ?? "Failed to generate report.");
+        }
+        setReportData(json);
+        setReportStatus("success");
+      }
+    } catch (err: any) {
+      setReportError(err.message ?? "An unexpected error occurred.");
+      setReportStatus("error");
+    }
+  };
+
+  // ── Render report rows ────────────────────────────────────────────────
+  const renderReportRows = (obj: InvestorReport) =>
+    Object.entries(obj).map(([key, value]) => {
       if (value === null || value === undefined || value === "") return null;
       const label = key
         .replace(/_/g, " ")
         .replace(/\b\w/g, (c) => c.toUpperCase());
-
       const displayValue =
-        typeof value === "object"
-          ? JSON.stringify(value)
-          : String(value);
-
+        typeof value === "object" ? JSON.stringify(value) : String(value);
       return (
         <div
           key={key}
@@ -199,7 +198,6 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
         </div>
       );
     });
-  };
 
   return (
     <div>
@@ -213,8 +211,7 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
               className="w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = "none";
-                (e.target as HTMLImageElement).parentElement!.innerHTML =
-                  `<span class="text-sm font-bold text-primary">${asset.stock_code.slice(0, 2)}</span>`;
+                (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-sm font-bold text-primary">${asset.stock_code.slice(0, 2)}</span>`;
               }}
             />
           ) : (
@@ -229,7 +226,6 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
           <p className="text-2xl font-display font-bold">
             RWF {formatCurrency(displayPrice)}
           </p>
-
           <div
             className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold mt-1 ${
               isUp ? "text-accent bg-accent/10" : "text-destructive bg-destructive/10"
@@ -245,7 +241,6 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
               {(asset.finalchange ?? 0).toFixed(2)}%
             </span>
           </div>
-
           {displayDate && (
             <p className="text-xs text-muted-foreground mt-0.5">{displayDate}</p>
           )}
@@ -346,32 +341,32 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
         </button>
       </div>
 
-      {/* ── Generate Report Button ─────────────────────────────────────────── */}
-      <div className="px-4 mt-4">
-        <button
-          onClick={handleGenerateReport}
-          disabled={reportStatus === "loading"}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-        >
-          {reportStatus === "loading" ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Generating Report…
-            </>
-          ) : (
-            <>
-              <FileText className="w-4 h-4" />
-              Generate Investor Report
-            </>
-          )}
-        </button>
-      </div>
+      {/* ── Generate Report Button — only for stock owner ──────────────────── */}
+      {isOwner && (
+        <div className="px-4 mt-4">
+          <button
+            onClick={handleGenerateReport}
+            disabled={reportStatus === "loading"}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            {reportStatus === "loading" ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating Report…
+              </>
+            ) : (
+              <>
+                <FileText className="w-4 h-4" />
+                Generate Investor Report
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* ── Report Panel ───────────────────────────────────────────────────── */}
-      {showReport && (
+      {isOwner && showReport && (
         <div className="mx-4 mt-3 rounded-xl border border-border bg-secondary/40 overflow-hidden">
-
-          {/* Loading */}
           {reportStatus === "loading" && (
             <div className="flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
               <Loader2 className="w-6 h-6 animate-spin" />
@@ -379,7 +374,6 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
             </div>
           )}
 
-          {/* Error */}
           {reportStatus === "error" && (
             <div className="flex flex-col items-center gap-2 p-4 text-destructive">
               <AlertCircle className="w-5 h-5" />
@@ -393,13 +387,14 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
             </div>
           )}
 
-          {/* Success */}
           {reportStatus === "success" && reportData && (
             <div>
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border/40">
                 <CheckCircle2 className="w-4 h-4 text-accent" />
                 <p className="text-xs font-semibold">Investor Report</p>
-                <span className="ml-auto text-xs text-muted-foreground">{asset.stock_code}</span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {asset.stock_code}
+                </span>
               </div>
               <div className="px-4 py-2 max-h-72 overflow-y-auto">
                 {renderReportRows(reportData)}

@@ -25,9 +25,9 @@ const LoginPage = () => {
       const data = await login(email, password);
 
       // No token from this backend — store user info directly
-      localStorage.setItem("user_id", String(data.user_id));
-      localStorage.setItem("email", data.email);
-      localStorage.setItem("company_id", String(data.company_id));
+      sessionStorage.setItem("user_id", String(data.user_id));
+      sessionStorage.setItem("email", data.email);
+      sessionStorage.setItem("company_id", String(data.company_id));
 
       navigate("/dashboard");
     } catch (error: unknown) {

@@ -36,7 +36,7 @@ export const updateUserInfo = async (
 ) => {
   const response = await axios.post(`${API_URL}/updateUserInfo`, {
     user_id: userId,
-    company_id: localStorage.getItem("company_id") ?? "",  // ✅ fixes PHP warning
+    company_id: sessionStorage.getItem("company_id") ?? "",  // ✅ fixes PHP warning
     company_role: "",                                        // ✅ fixes PHP warning
     ...fields,
   });
@@ -46,15 +46,15 @@ export const updateUserInfo = async (
 };
 
 export const logout = async () => {
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token");
   try {
     await axios.post(`${API_URL}/logout`, {}, {
       headers: { Authorization: `Bearer ${token}` }
     });
   } finally {
-    localStorage.removeItem("user_id");
-    localStorage.removeItem("email");
-    localStorage.removeItem("company_id");
+    sessionStorage.removeItem("user_id");
+    sessionStorage.removeItem("email");
+    sessionStorage.removeItem("company_id");
   }
 };
 

@@ -21,7 +21,7 @@ const ExplorePage = () => {
   useEffect(() => {
     const fetchStocks = async () => {
       try {
-        const userId = localStorage.getItem("user_id") ?? "";
+        const userId = sessionStorage.getItem("user_id") ?? "";
         const data = await getAllStocks(userId);
         console.log('Fetched stocks:', data);
         setStocks(data);

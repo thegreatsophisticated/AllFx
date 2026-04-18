@@ -54,12 +54,18 @@ export const addWatchList = async (userId: string, stockId: number) => {
 //   if (data?.message?.toLowerCase().includes('success') || data?.transaction_id || data?.status === 'success') return data;
 //   throw new Error(data?.message ?? 'Sell failed');
 // };
+export const removeWatchList = async (userId: string, stockId: number) => {
+  const response = await axios.post(`${API_URL}/removeWatchList`, { user_id: userId, stock_id: stockId });
+  const data = response.data;
+  if (data?.status === 'error') throw new Error(data?.message ?? 'Failed to remove from watchlist');
+  return data;
+};
 
 export const buyStock = async (userId: string, stockId: number, quantity: number, price: number) => {
   const userIDNumber = Number(userId);
   const response = await axios.post(`${API_URL}/buyStock`, { user_id: userIDNumber, stock_id: stockId, quantity, price });
   const data = response.data;
-  
+
   // Always throw with the real API message on error
   if (data?.status === 'error') throw new Error(data?.message ?? 'Buy failed');
   return data; 

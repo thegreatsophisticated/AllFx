@@ -32,7 +32,7 @@ import { toast } from "sonner";
 
 const cancelStock = async (userId: string, stockId: number): Promise<string> => {
   const response = await fetch(
-    "https://irebegrp.com/irebe/index.php/cancelStock",
+    "https://irebegroup.com/irebe/index.php/cancelStock",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -279,31 +279,69 @@ const StockDetailPage = () => {
   };
 
   // ── Buy / Sell ──────────────────────────────────────────────────────────
+  // const handleTransaction = async (
+  //   action: "buy" | "sell",
+  //   price: number,
+  //   quantity: number
+  // ) => {
+  //   if (!userId) { toast.error("Please log in to trade."); return; }
+  //   setIsTransacting(true);
+  //   try {
+  //     if (action === "buy") {
+  //       await buyStock(userId, asset.id, quantity, price);
+  //     } else {
+  //       await sellStock(userId, asset.id, quantity, price);
+  //     }
+  //     toast.success(
+  //       `${action === "buy" ? "Bought" : "Sold"} ${quantity} shares of ${
+  //         asset.stock_code
+  //       } at RWF ${formatCurrency(price)}`
+  //     );
+  //     await refreshAll();
+  //   } catch (err) {
+  //     toast.error(err instanceof Error ? err.message : "Transaction failed");
+  //   } finally {
+  //     setIsTransacting(false);
+  //   }
+  // };
+
   const handleTransaction = async (
-    action: "buy" | "sell",
-    price: number,
-    quantity: number
-  ) => {
-    if (!userId) { toast.error("Please log in to trade."); return; }
-    setIsTransacting(true);
-    try {
-      if (action === "buy") {
-        await buyStock(userId, asset.id, quantity, price);
-      } else {
-        await sellStock(userId, asset.id, quantity, price);
-      }
+  action: "buy" | "sell",
+  price: number,
+  quantity: number
+) => {
+  if (!userId) { toast.error("Please log in to trade."); return; }
+  setIsTransacting(true);
+  try {
+    const result = action === "buy"
+      ? await buyStock(userId, asset.id, quantity, price)
+      : await sellStock(userId, asset.id, quantity, price);
+
+    // Use the real message from the API
+    const apiMessage = result?.message ?? `${action === "buy" ? "Buy" : "Sell"} order placed.`;
+
+    // Distinguish full fill vs partial/pending
+    const executed = result?.executed_quantity ?? 0;
+    const executedPrice = result?.executed_price;
+
+    if (executed > 0 && executedPrice) {
+      // Fully or partially executed immediately
       toast.success(
-        `${action === "buy" ? "Bought" : "Sold"} ${quantity} shares of ${
-          asset.stock_code
-        } at RWF ${formatCurrency(price)}`
+        `${apiMessage}\nExecuted: ${executed} shares @ RWF ${formatCurrency(executedPrice)}`
       );
-      await refreshAll();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Transaction failed");
-    } finally {
-      setIsTransacting(false);
+    } else {
+      // Pending / awaiting match — show the API message directly
+      toast.success(apiMessage);
     }
-  };
+
+    await refreshAll();
+  } catch (err) {
+    // Real error message from API (e.g. "Not enough stock available to sell.")
+    toast.error(err instanceof Error ? err.message : "Transaction failed");
+  } finally {
+    setIsTransacting(false);
+  }
+};
 
   // ── Cancel ──────────────────────────────────────────────────────────────
   // Opens confirmation modal; actual cancellation fires on confirm.

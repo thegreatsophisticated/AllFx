@@ -37,22 +37,43 @@ export const addWatchList = async (userId: string, stockId: number) => {
 };
 
 
+
+// export const buyStock = async (userId: string, stockId: number, quantity: number, price: number) => {
+//   const userIDNumber = Number(userId);
+//   const response = await axios.post(`${API_URL}/buyStock`, { user_id: userIDNumber, stock_id: stockId, quantity, price });
+//   const data = response.data;
+//   if (data?.message?.toLowerCase().includes('success') || data?.transaction_id || data?.status === 'success') return data;
+//   throw new Error(data?.message ?? 'Buy failed');
+// };
+
+
+// export const sellStock = async (userId: string, stockId: number, quantity: number, price: number) => {
+//   const userIDNumber = Number(userId);
+//   const response = await axios.post(`${API_URL}/sellStock`, { user_id: userIDNumber, stock_id: stockId, quantity, price });
+//   const data = response.data;
+//   if (data?.message?.toLowerCase().includes('success') || data?.transaction_id || data?.status === 'success') return data;
+//   throw new Error(data?.message ?? 'Sell failed');
+// };
+
 export const buyStock = async (userId: string, stockId: number, quantity: number, price: number) => {
   const userIDNumber = Number(userId);
   const response = await axios.post(`${API_URL}/buyStock`, { user_id: userIDNumber, stock_id: stockId, quantity, price });
   const data = response.data;
-  if (data?.message?.toLowerCase().includes('success') || data?.transaction_id || data?.status === 'success') return data;
-  throw new Error(data?.message ?? 'Buy failed');
+  
+  // Always throw with the real API message on error
+  if (data?.status === 'error') throw new Error(data?.message ?? 'Buy failed');
+  return data; 
 };
-
 
 export const sellStock = async (userId: string, stockId: number, quantity: number, price: number) => {
   const userIDNumber = Number(userId);
   const response = await axios.post(`${API_URL}/sellStock`, { user_id: userIDNumber, stock_id: stockId, quantity, price });
   const data = response.data;
-  if (data?.message?.toLowerCase().includes('success') || data?.transaction_id || data?.status === 'success') return data;
-  throw new Error(data?.message ?? 'Sell failed');
+  if (data?.status === 'error') throw new Error(data?.message ?? 'Sell failed');
+  return data;
 };
+
+
 
 export const getStockProducts = async (category: string = "19") => {
   const response = await axios.post(`${API_URL}/getStockProducts`, { category });

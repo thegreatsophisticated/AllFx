@@ -36,15 +36,19 @@ export const addWatchList = async (userId: string, stockId: number) => {
   throw new Error(data?.message ?? 'Failed to add to watchlist');
 };
 
+
 export const buyStock = async (userId: string, stockId: number, quantity: number, price: number) => {
-  const response = await axios.post(`${API_URL}/buyStock`, { user_id: userId, stock_id: stockId, quantity, price });
+  const userIDNumber = Number(userId);
+  const response = await axios.post(`${API_URL}/buyStock`, { user_id: userIDNumber, stock_id: stockId, quantity, price });
   const data = response.data;
   if (data?.message?.toLowerCase().includes('success') || data?.transaction_id || data?.status === 'success') return data;
   throw new Error(data?.message ?? 'Buy failed');
 };
 
+
 export const sellStock = async (userId: string, stockId: number, quantity: number, price: number) => {
-  const response = await axios.post(`${API_URL}/sellStock`, { user_id: userId, stock_id: stockId, quantity, price });
+  const userIDNumber = Number(userId);
+  const response = await axios.post(`${API_URL}/sellStock`, { user_id: userIDNumber, stock_id: stockId, quantity, price });
   const data = response.data;
   if (data?.message?.toLowerCase().includes('success') || data?.transaction_id || data?.status === 'success') return data;
   throw new Error(data?.message ?? 'Sell failed');

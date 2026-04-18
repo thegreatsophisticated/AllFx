@@ -15,16 +15,22 @@ import {
   buyStock,
   sellStock,
   addWatchList,
+  getUserStockProducts,
+  getAllStocks,
 } from "@/lib/api-stocks";
 import StockChart from "@/components/StockChart";
 import BuySellPanel from "@/components/BuySellPanel";
 import { toast } from "sonner";
 
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Cancel Stock API
 // ─────────────────────────────────────────────────────────────────────────────
 
-const cancelStock = async (userId: string, stockId: string): Promise<string> => {
+
+
+const cancelStock = async (userId: string, stockId: number): Promise<string> => {
   const response = await fetch(
     "https://irebegrp.com/irebe/index.php/cancelStock",
     {
@@ -42,9 +48,11 @@ const cancelStock = async (userId: string, stockId: string): Promise<string> => 
   return data.message ?? "Transaction cancelled.";
 };
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
 
 const extractChartStats = (data: { date: string; price: number }[]) => {
   if (!data.length)
@@ -68,7 +76,10 @@ const extractChartStats = (data: { date: string; price: number }[]) => {
   };
 };
 
+
+
 const formatCurrency = (value: number) =>
+
   value.toLocaleString("en-RW", { minimumFractionDigits: 2 });
 
 const getPriceChange = (data: { price: number }[]) => {
@@ -235,7 +246,11 @@ const StockDetailPage = () => {
 
   const refreshAll = useCallback(async () => {
     await fetchChart(true);
-  }, [fetchChart]);
+    // getUserStockProducts
+    await getUserStockProducts(userId);
+    // getAllStocks
+    await getAllStocks( userId);
+  }, [fetchChart, userId]);
 
   // ── Guard ───────────────────────────────────────────────────────────────
   if (!asset) {
@@ -300,7 +315,7 @@ const StockDetailPage = () => {
   const handleCancelConfirm = async () => {
     setIsCancelling(true);
     try {
-      const message = await cancelStock(userId, String(asset.id));
+      const message = await cancelStock(userId, Number(asset.id));
       toast.success(message);
       setShowCancelModal(false);
       // Refresh chart & stats so cancelled order is immediately reflected
@@ -406,7 +421,7 @@ const StockDetailPage = () => {
         )}
 
         {/* ── Cancel Order Banner ──────────────────────────────────────────── */}
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.05 }}
@@ -420,7 +435,7 @@ const StockDetailPage = () => {
             <XCircle className="w-4 h-4" />
             Cancel Pending Order
           </button>
-        </motion.div>
+        </motion.div> */}
 
         {/* ── Chart ───────────────────────────────────────────────────────── */}
         {isChartLoading ? (
@@ -570,6 +585,7 @@ const StatRow = ({
     ))}
   </div>
 );
+
 
 const InfoRow = ({
   label,

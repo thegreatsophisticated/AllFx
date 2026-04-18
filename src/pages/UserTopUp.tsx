@@ -132,45 +132,90 @@ const UserTopUp = () => {
   };
 
   // ── Confirm → upload → process ──
+  // const handleConfirm = async () => {
+  //   try {
+  //     setStep(STEPS.UPLOADING);
+
+  //     const formData = new FormData();
+  //     formData.append("image", proofFile);
+
+  //     const uploadRes = await axios.post(
+  //       "https://irebegroup.com/irebe/index.php/uploadImage",
+  //       formData,
+  //       { headers: { "Content-Type": "multipart/form-data" } }
+  //     );
+
+  //     const imageName =
+  //       uploadRes.data?.name       ||
+  //       uploadRes.data?.image_name ||
+  //       uploadRes.data?.filename;
+
+  //     if (!imageName) throw new Error("Image upload failed — server returned no filename.");
+
+  //     setStep(STEPS.PROCESSING);
+
+  //     await axios.post(`${API_URL}/accountTransact`, {
+  //       proof:          imageName,
+  //       amount:         Number(amount),
+  //       password,
+  //       user_id:        userId,
+  //       stock_id:       selectedAsset,
+  //       stock_code:     "RWF",
+  //       direction:      "in",
+  //       reference_code: 1,
+  //     });
+
+  //     setStep(STEPS.SUCCESS);
+  //   } catch (err) {
+  //     setErrorMsg(err?.response?.data?.message || err?.message || "Something went wrong.");
+  //     setStep(STEPS.ERROR);
+  //   }
+  // };
+
   const handleConfirm = async () => {
-    try {
-      setStep(STEPS.UPLOADING);
+  try {
+    setStep(STEPS.UPLOADING);
 
-      const formData = new FormData();
-      formData.append("image", proofFile);
+    const formData = new FormData();
+    formData.append("image", proofFile);
 
-      const uploadRes = await axios.post(
-        "https://irebegroup.com/irebe/index.php/uploadImage",
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
+    const uploadRes = await axios.post(
+      "https://irebegroup.com/irebe/index.php/uploadImage",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
 
-      const imageName =
-        uploadRes.data?.name       ||
-        uploadRes.data?.image_name ||
-        uploadRes.data?.filename;
+    const imageName =
+      uploadRes.data?.name       ||
+      uploadRes.data?.image_name ||
+      uploadRes.data?.filename;
 
-      if (!imageName) throw new Error("Image upload failed — server returned no filename.");
+    if (!imageName) throw new Error("Image upload failed — server returned no filename.");
 
-      setStep(STEPS.PROCESSING);
+    setStep(STEPS.PROCESSING);
 
-      await axios.post(`${API_URL}/accountTransact`, {
-        proof:          imageName,
-        amount:         Number(amount),
-        password,
-        user_id:        userId,
-        stock_id:       selectedAsset,
-        stock_code:     "RWF",
-        direction:      "in",
-        reference_code: 1,
-      });
+    const transactRes = await axios.post(`${API_URL}/accountTransact`, {
+      proof:          imageName,
+      amount:         Number(amount),
+      password,
+      user_id:        userId,
+      stock_id:       selectedAsset,
+      stock_code:     "RWF",
+      direction:      "in",
+      reference_code: 1,
+    });
 
-      setStep(STEPS.SUCCESS);
-    } catch (err) {
-      setErrorMsg(err?.response?.data?.message || err?.message || "Something went wrong.");
-      setStep(STEPS.ERROR);
+    // ✅ ADD THIS: check for application-level error in response body
+    if (transactRes.data?.status === "error") {
+      throw new Error(transactRes.data?.message || "Error processing transaction.");
     }
-  };
+
+    setStep(STEPS.SUCCESS);
+  } catch (err) {
+    setErrorMsg(err?.response?.data?.message || err?.message || "Something went wrong.");
+    setStep(STEPS.ERROR);
+  }
+};
 
   const reset = () => {
     setStep(STEPS.FORM);

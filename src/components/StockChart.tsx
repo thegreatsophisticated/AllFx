@@ -72,15 +72,14 @@ const filterByPeriod = (
     return filtered.length ? filtered : data;
   }
 
-  return data; // "1Y" fallback / all
+  return data; 
 };
 
 const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
-  // ── Resolve user identity without caching stale data ─────────────────
-  // Always read fresh from sessionStorage (set at login, cleared on logout).
-  // We deliberately avoid sessionStorage so stale data can't mislead users.
+
   const userId = sessionStorage.getItem("user_id") ?? "";
   const userIdNum = Number(userId);
+
 
   // ── Owner check: only stock owner sees "Generate Investor Report" ──────
   const isOwner = !!userId && asset?.owner_id === userIdNum;
@@ -179,6 +178,7 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
     }
   };
 
+
   // ── Render report rows ────────────────────────────────────────────────
   const renderReportRows = (obj: InvestorReport) =>
     Object.entries(obj).map(([key, value]) => {
@@ -201,7 +201,9 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
 
   return (
     <div>
+      
       {/* Detail header */}
+
       <div className="px-4 flex items-start gap-3 mb-2">
         <div className="w-12 h-12 rounded-full bg-secondary overflow-hidden flex items-center justify-center flex-shrink-0">
           {asset.logo ? (
@@ -316,6 +318,7 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
         </ResponsiveContainer>
       </div>
 
+
       {/* Period selector + chart type toggle */}
       <div className="flex items-center gap-2 px-4 mt-2">
         <div className="flex gap-1.5 flex-1">
@@ -341,6 +344,7 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
         </button>
       </div>
 
+
       {/* ── Generate Report Button — only for stock owner ──────────────────── */}
       {isOwner && (
         <div className="px-4 mt-4">
@@ -365,6 +369,7 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
       )}
 
       {/* ── Report Panel ───────────────────────────────────────────────────── */}
+
       {isOwner && showReport && (
         <div className="mx-4 mt-3 rounded-xl border border-border bg-secondary/40 overflow-hidden">
           {reportStatus === "loading" && (
@@ -403,6 +408,8 @@ const StockChart = ({ data, asset, chartStats }: StockChartProps) => {
           )}
         </div>
       )}
+
+
     </div>
   );
 };

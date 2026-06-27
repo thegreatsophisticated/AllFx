@@ -227,6 +227,18 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
                       <ChevronRight className="w-3.5 h-3.5" />
                     </Link>
                   )}
+                   {user?.user_id === 1 && (
+                    <Link
+                      to="/manage-drivers"
+                      className="flex items-center justify-between w-full px-3 py-2 rounded-xl bg-secondary border border-border text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                        Manage Drivers
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
                 </div>
               </div>
             )}

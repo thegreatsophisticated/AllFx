@@ -17,6 +17,7 @@ import MobileMoney from "./pages/MobileMoney";
 import UserTopUp from "./pages/UserTopUp";
 import ResetPasswordPage from "./pages/Resetpasswordpage";
 import ManageProducts from "./pages/ManageProducts";
+import ManageDrivers from "./pages/ManageDrivers";
 
 const queryClient = new QueryClient();
 
@@ -37,8 +38,8 @@ const App = () => (
           <Route path="/mobile-money" element={<MobileMoney />} />
           {/* manage  */}
           <Route path="/manage-products" element={<ManageProducts />} />
-
-
+{/* Drivers */}
+ <Route path="/manage-drivers" element={<ManageDrivers />} />
           <Route path="/user-top-up" element={<UserTopUp />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
            

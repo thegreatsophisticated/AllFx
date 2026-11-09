@@ -53,6 +53,8 @@ const ProfileDrawer = ({ open, onClose }: ProfileDrawerProps) => {
       try {
         const userId = sessionStorage.getItem("user_id") ?? "";
         const data = await getUserData(userId);
+        console.log("Fetched user data:", data);
+        
         setUser(data);
         setForm({
           first_name: data.first_name ?? "",
